@@ -17,6 +17,9 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+var msPerTick uint32 = 15
+var durationPerTick = int64(msPerTick) * int64(time.Millisecond)
+
 // Snd wrapper for sounds
 type Snd interface {
 	Play() error
@@ -48,27 +51,84 @@ func (w *WavSnd) Stop() {
 
 // DOB Display Object renders to the screen and animates
 type DOB interface {
-	Tick()
 	Paint()
 }
 
 type ImgDOB struct {
+	BaseAnim
 	ctx     *Ctx
 	h       int32
 	texture *sdl.Texture
 	w       int32
-	x       int32
-	y       int32
+	x       float64
+	y       float64
 }
 
-func (i *ImgDOB) Tick() {
-
+func (i *ImgDOB) Tick(tick int64) {
+	for j, anim := range i.Anims {
+		if anim.Tick(tick) {
+			i.Anims = append(i.Anims[:j], i.Anims[j+1:]...)
+		}
+	}
 }
 
 func (i *ImgDOB) Paint() {
 	src := sdl.Rect{X: 0, Y: 0, W: i.w * 2, H: i.h * 2}
-	dst := sdl.Rect{X: i.x, Y: i.y, W: i.w, H: i.h}
+	dst := sdl.Rect{X: int32(i.x), Y: int32(i.y), W: i.w, H: i.h}
 	i.ctx.Renderer.Copy(i.texture, &src, &dst)
+}
+
+type Anim interface {
+	Tick(tick int64) bool
+}
+
+// BaseAnim has a DOB and can chain other anims
+type BaseAnim struct {
+	Dob   *ImgDOB
+	Anims []Anim
+}
+
+func (b *BaseAnim) anim(a Anim) Anim {
+	if len(b.Anims) == 0 {
+		b.Anims = make([]Anim, 0)
+	}
+	b.Anims = append(b.Anims, a)
+	return a
+}
+
+func (b *BaseAnim) Move(x float64, y float64, duration time.Duration) Anim {
+	moveAnim := &MoveAnim{dob: b.Dob, endX: x, endY: y, duration: int64(duration)}
+	return b.anim(moveAnim)
+}
+
+func (m *BaseAnim) Tick(tick int64) {
+}
+
+// Move Anim
+type MoveAnim struct {
+	BaseAnim
+	deltaX    float64
+	deltaY    float64
+	dob       *ImgDOB
+	duration  int64
+	endX      float64
+	endY      float64
+	startTick int64
+}
+
+func (m *MoveAnim) Tick(tick int64) bool {
+	if m.startTick == 0 {
+		m.startTick = tick
+		m.deltaX = m.endX - m.dob.x
+		m.deltaY = m.endY - m.dob.y
+	}
+	pct := float64(tick-m.startTick) * float64(durationPerTick) / float64(m.duration)
+	if pct > 1 {
+		pct = 1
+	}
+	m.dob.x = m.endX - m.deltaX + pct*m.deltaX
+	m.dob.y = m.endY - m.deltaY + pct*m.deltaY
+	return pct == 1
 }
 
 // Loader loads assets
@@ -112,6 +172,7 @@ func (l *EZLoader) ImgGet(path string) (dob *ImgDOB, err error) {
 	dob, ok = l.imgs[path]
 	if !ok {
 		dob = &ImgDOB{ctx: l.ctx}
+		dob.BaseAnim.Dob = dob
 		dob.texture, err = img.LoadTexture(l.ctx.Renderer, path)
 		if err != nil {
 			fmt.Printf("could not load texture at %s: %v\n", path, err)
@@ -148,12 +209,12 @@ func CHECK(err error) {
 // Stage is the root of the display tree
 type Stage struct {
 	ctx  *Ctx
-	dobs []DOB
+	dobs []*ImgDOB
 }
 
-func (s *Stage) Tick() {
+func (s *Stage) Tick(tick int64) {
 	for i := 0; i < len(s.dobs); i++ {
-		s.dobs[i].Tick()
+		s.dobs[i].Tick(tick)
 	}
 }
 
@@ -169,7 +230,7 @@ func (s *Stage) Paint() {
 	s.ctx.Renderer.Present()
 }
 
-func (s *Stage) DOBsPut(d ...DOB) {
+func (s *Stage) DOBsPut(d ...*ImgDOB) {
 	s.dobs = append(s.dobs, d...)
 }
 
@@ -196,30 +257,34 @@ func main() {
 	ctx.View.SetTitle("Frogger")
 
 	// make the stage
-	s := &Stage{ctx: ctx, dobs: make([]DOB, 0)}
+	s := &Stage{ctx: ctx, dobs: make([]*ImgDOB, 0)}
 
 	// make the loader
 	l := &EZLoader{ctx: ctx}
 	l.imgs = make(map[string]*ImgDOB)
 	l.snds = make(map[string]Snd)
 
-	// load a block and put it on screen
+	// add a block to the screen
 	greenBlock, _ := l.ImgGet("img/block_green.png")
 	s.DOBsPut(greenBlock)
 
-	// loop forever
+	// animate it
+	greenBlock.Move(120, 300, 3*time.Second)
+
+	// loop until the user quits
 	running := true
+	var tick int64 = 1
 	for running {
-		s.Tick()
+		s.Tick(tick)
 		s.Paint()
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch event.(type) {
 			case *sdl.QuitEvent:
 				println("Quit")
 				running = false
-				break
 			}
 		}
-		sdl.Delay(16)
+		sdl.Delay(msPerTick)
+		tick++
 	}
 }
