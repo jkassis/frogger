@@ -121,8 +121,11 @@ func (b *BaseAn) anim(a An) An {
 	return a
 }
 
-func (b *BaseAn) Move(x float64, y float64, duration time.Duration) An {
-	moveAnim := &MoveAn{dob: b.Dob, endX: x, endY: y, duration: int64(duration)}
+func (b *BaseAn) Move(x float64, y float64, duration time.Duration, easer Ease) An {
+	if easer == nil {
+		easer = EaseNone
+	}
+	moveAnim := &MoveAn{dob: b.Dob, endX: x, endY: y, duration: int64(duration), easer: easer}
 	return b.anim(moveAnim)
 }
 
@@ -132,6 +135,7 @@ func (m *BaseAn) Tick(tick int64) {
 // Move Anim
 type MoveAn struct {
 	BaseAn
+	easer     Ease
 	deltaX    float64
 	deltaY    float64
 	dob       *Dob
@@ -151,8 +155,9 @@ func (m *MoveAn) Tick(tick int64) bool {
 	if pct > 1 {
 		pct = 1
 	}
-	m.dob.x = m.endX - m.deltaX + pct*m.deltaX
-	m.dob.y = m.endY - m.deltaY + pct*m.deltaY
+	pctWEase := m.easer(pct)
+	m.dob.x = m.endX - m.deltaX + pctWEase*m.deltaX
+	m.dob.y = m.endY - m.deltaY + pctWEase*m.deltaY
 	return pct == 1
 }
 
