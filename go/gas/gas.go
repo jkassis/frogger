@@ -74,15 +74,17 @@ func (w *Wav) Stop() {
 // Dob Display Object renders to the screen and animates
 type Dob struct {
 	BaseAn
-	c       sdl.Color // color
-	d       [2]int32  // dim
-	px      float32   // posX
-	py      float32   // posY
-	spawn   map[int64]*Dob
-	spawner *Dob
-	stage   *Stage
-	texture *Tex
-	zoom    float32
+	fillC    sdl.Color // color
+	outlineC sdl.Color
+	OutlineW int
+	D        [2]int32 // dim
+	Px       float32  // posX
+	Py       float32  // posY
+	spawn    map[int64]*Dob
+	spawner  *Dob
+	Stage    *Stage
+	Texture  *Tex
+	zoom     float32
 }
 
 func (d *Dob) Tick(tick int32) {
@@ -100,13 +102,13 @@ func (d *Dob) Tick(tick int32) {
 }
 
 func (d *Dob) Paint() {
-	dst := sdl.Rect{X: int32(d.px - d.zoom*float32(d.d[0])/2), Y: int32(d.py - d.zoom*float32(d.d[1])/2), W: int32(d.zoom * float32(d.d[0])), H: int32(d.zoom * float32(d.d[1]))}
-	if d.texture == nil {
-		d.stage.view.Renderer.SetDrawColor(d.c.R, d.c.G, d.c.B, d.c.A)
-		d.stage.view.Renderer.FillRect(&dst)
+	dst := sdl.Rect{X: int32(d.Px - d.zoom*float32(d.D[0])/2), Y: int32(d.Py - d.zoom*float32(d.D[1])/2), W: int32(d.zoom * float32(d.D[0])), H: int32(d.zoom * float32(d.D[1]))}
+	if d.Texture == nil {
+		d.Stage.view.Renderer.SetDrawColor(d.fillC.R, d.fillC.G, d.fillC.B, d.fillC.A)
+		d.Stage.view.Renderer.FillRect(&dst)
 	} else {
-		src := sdl.Rect{X: 0, Y: 0, W: d.d[0], H: d.d[1]}
-		d.stage.view.Renderer.Copy(d.texture.SDLTexture, &src, &dst)
+		src := sdl.Rect{X: 0, Y: 0, W: d.D[0], H: d.D[1]}
+		d.Stage.view.Renderer.Copy(d.Texture.SDLTexture, &src, &dst)
 	}
 
 	for _, spawn := range d.spawn {
@@ -114,8 +116,17 @@ func (d *Dob) Paint() {
 	}
 }
 
-func (d *Dob) Color(c uint32) {
-	d.c = sdl.Color{
+func (d *Dob) FillC(c uint32) {
+	d.fillC = sdl.Color{
+		R: uint8(c >> 24),
+		G: uint8(c << 8 >> 24),
+		B: uint8(c << 16 >> 24),
+		A: uint8(c << 24 >> 24),
+	}
+}
+
+func (d *Dob) OutlineC(c uint32) {
+	d.outlineC = sdl.Color{
 		R: uint8(c >> 24),
 		G: uint8(c << 8 >> 24),
 		B: uint8(c << 16 >> 24),
@@ -124,32 +135,49 @@ func (d *Dob) Color(c uint32) {
 }
 
 func (d *Dob) Text(font *ttf.Font, t string) (err error) {
-	stext, err := font.RenderUTF8Solid(t, d.c)
-	if d.texture != nil && d.texture.SDLTexture != nil {
-		d.texture.SDLTexture.Destroy()
+	if d.Texture != nil && d.Texture.SDLTexture != nil {
+		d.Texture.SDLTexture.Destroy()
 	}
-	d.texture = &Tex{}
-	d.texture.SDLTexture, err = d.stage.view.Renderer.CreateTextureFromSurface(stext)
-	_, _, d.d[0], d.d[1], err = d.texture.SDLTexture.Query()
-	stext.Free()
+	d.Texture = &Tex{}
+	if d.OutlineW > 0 {
+		font.SetOutline(d.OutlineW)
+		outlineSurface, _ := font.RenderUTF8Blended(t, d.outlineC)
+		font.SetOutline(0)
+		fillSurface, _ := font.RenderUTF8Blended(t, d.fillC)
+		src := &sdl.Rect{X: 0, Y: 0, W: fillSurface.W, H: fillSurface.H}
+		dst := &sdl.Rect{X: int32(d.OutlineW), Y: int32(d.OutlineW), W: fillSurface.W, H: fillSurface.H}
+		// fillSurface.SetBlendMode(sdl.BLENDMODE_BLEND)
+		fillSurface.Blit(src, outlineSurface, dst)
+		d.Texture.SDLTexture, _ = d.Stage.view.Renderer.CreateTextureFromSurface(outlineSurface)
+		d.D[0] = outlineSurface.W
+		d.D[1] = outlineSurface.H
+		fillSurface.Free()
+		outlineSurface.Free()
+	} else {
+		fillSurface, _ := font.RenderUTF8Solid(t, d.fillC)
+		d.Texture.SDLTexture, _ = d.Stage.view.Renderer.CreateTextureFromSurface(fillSurface)
+		d.D[0] = fillSurface.W
+		d.D[1] = fillSurface.H
+		fillSurface.Free()
+	}
 	return
 }
 
 func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 	dob = &Dob{
 		BaseAn: BaseAn{id: dobID},
-		stage:  d.stage,
+		Stage:  d.Stage,
 		zoom:   1,
 	}
 	dobID++
 	if path == "" {
-		dob.d[0] = 2
-		dob.d[1] = 2
-		dob.c = sdl.Color{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+		dob.D[0] = 2
+		dob.D[1] = 2
+		dob.fillC = sdl.Color{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
 	} else {
-		dob.texture, _ = d.stage.view.TextureLoad(path)
-		dob.d[0] = dob.texture.W
-		dob.d[1] = dob.texture.H
+		dob.Texture, _ = d.Stage.view.TextureLoad(path)
+		dob.D[0] = dob.Texture.W
+		dob.D[1] = dob.Texture.H
 	}
 	dob.BaseAn.Dob = dob
 
@@ -209,7 +237,7 @@ func (a *BaseAn) PC(tick int32) (raw float32, eased float32) {
 	if a.Duration == 0 {
 		pct = 1.0
 	} else {
-		pct = float32(tick-a.StartTick) * float32(a.Dob.stage.DurationPerTick) / float32(a.Duration)
+		pct = float32(tick-a.StartTick) * float32(a.Dob.Stage.DurationPerTick) / float32(a.Duration)
 		if pct > .99 {
 			pct = 1
 		}
@@ -242,12 +270,12 @@ type MoveAn struct {
 func (a *MoveAn) Tick(tick int32) bool {
 	if a.StartTick == 0 {
 		a.StartTick = tick
-		a.deltaX = a.endX - a.Dob.px
-		a.deltaY = a.endY - a.Dob.py
+		a.deltaX = a.endX - a.Dob.Px
+		a.deltaY = a.endY - a.Dob.Py
 	}
 	pct, eased := a.PC(tick)
-	a.Dob.px = a.endX - a.deltaX + eased*a.deltaX
-	a.Dob.py = a.endY - a.deltaY + eased*a.deltaY
+	a.Dob.Px = a.endX - a.deltaX + eased*a.deltaX
+	a.Dob.Py = a.endY - a.deltaY + eased*a.deltaY
 	return pct == 1
 }
 
@@ -308,20 +336,20 @@ func (a *BaseAn) Emit(template *Dob, qty int, delayEach time.Duration, duration 
 
 func (a *EmitAn) Tick(tick int32) bool {
 	pct, _ := a.PC(tick)
-	if a.StartTick == 0 || ((tick-a.lastEmitTick)*int32(a.Dob.stage.DurationPerTick) > int32(a.interval)) {
+	if a.StartTick == 0 || ((tick-a.lastEmitTick)*int32(a.Dob.Stage.DurationPerTick) > int32(a.interval)) {
 		a.lastEmitTick = tick
 
 		for i := 0; i < a.qty; i++ {
 			c := a.template
 			b, _ := c.Spawn("")
-			b.c = c.c
-			b.d = c.d
+			b.fillC = c.fillC
+			b.D = c.D
 			b.Duration = c.Duration
 			b.Easer = c.Easer
-			b.px = c.px
-			b.py = c.py
-			b.stage = c.stage
-			b.texture = c.texture
+			b.Px = c.Px
+			b.Py = c.Py
+			b.Stage = c.Stage
+			b.Texture = c.Texture
 			b.zoom = c.zoom
 			b.StartTick = 0
 
@@ -384,12 +412,12 @@ func (v *View) Destroy() {
 
 func (v *View) MakeStage() (s *Stage, err error) {
 	s = &Stage{view: v}
-	s.Root = &Dob{stage: s, zoom: 1}
-	s.Root.d[0] = v.W
-	s.Root.d[1] = v.H
-	s.Root.px = float32(v.W / 2)
-	s.Root.py = float32(v.H / 2)
-	s.Root.Color(0xffffffff)
+	s.Root = &Dob{Stage: s, zoom: 1}
+	s.Root.D[0] = v.W
+	s.Root.D[1] = v.H
+	s.Root.Px = float32(v.W / 2)
+	s.Root.Py = float32(v.H / 2)
+	s.Root.FillC(0xffffffff)
 	dobID++
 	v.Stage = s
 	return

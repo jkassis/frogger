@@ -53,7 +53,7 @@ func main() {
 
 		// rainbow block
 		rainbowBlock, _ := s.Root.Spawn("")
-		rainbowBlock.Color(0xff3333dd)
+		rainbowBlock.FillC(0xff3333dd)
 		rainbowBlock.Emit(rainbowBlock, 20, 500*time.Millisecond, 3*time.Second, s.Root, gas.EaseInOutSinInv, func(d *gas.Dob) {
 			x := float32(view.W) * rand.Float32()
 			y := float32(view.H) * rand.Float32()
@@ -68,7 +68,9 @@ func main() {
 			Zoom(10, 3*time.Second, gas.EaseInOutSin)
 
 		frogger, _ := s.Root.Spawn("")
-		frogger.Color(0x00ff33)
+		frogger.FillC(0x00ff00ff)
+		frogger.OutlineC(0x333333ff)
+		frogger.OutlineW = 2
 		frogger.Text(font, "Frogger")
 		frogger.Move(800, 300, 0, nil)
 		frogger.Move(400, 300, 3*time.Second, gas.EaseInOutSin)
