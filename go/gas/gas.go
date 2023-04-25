@@ -66,9 +66,10 @@ func (w *Wav) Stop() {
 // Dob Display Object renders to the screen and animates
 type Dob struct {
 	BaseAn
-	stage   *Stage
 	h       int32
-	spawn   []*Dob
+	id      int32
+	spawn   map[int32]*Dob
+	stage   *Stage
 	texture *Tex
 	w       int32
 	x       float32
@@ -93,17 +94,20 @@ func (d *Dob) Paint() {
 
 func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 	dob = &Dob{
+		id:    d.stage.SpawnId,
 		stage: d.stage,
 		zoom:  1,
 	}
+	d.stage.SpawnId++
 	dob.texture, _ = d.stage.view.TextureLoad(path)
 	dob.h = dob.texture.H
 	dob.w = dob.texture.W
 	dob.BaseAn.Dob = dob
-	if dob.spawn == nil {
-		dob.spawn = make([]*Dob, 0)
+	if d.spawn == nil {
+		d.spawn = make(map[int32]*Dob, 0)
 	}
-	d.spawn = append(d.spawn, dob)
+
+	d.spawn[dob.id] = dob
 	return
 }
 
@@ -209,6 +213,22 @@ func (a *ZoomAn) Tick(tick int32) bool {
 	return pct == 1
 }
 
+// Zoom Anim
+type ExitAn struct {
+	BaseAn
+}
+
+func (a *BaseAn) Exit() *ExitAn {
+	b := &ExitAn{BaseAn: BaseAn{Dob: a.Dob, anQ: nil, duration: 0, easer: nil}}
+	return a.add(b).(*ExitAn)
+}
+
+func (a *ExitAn) Tick(tick int32) bool {
+	delete(a.Dob.stage.spawn, a.Dob.id)
+	a.Dob.stage = nil
+	return true
+}
+
 // View provides context for all DOBs
 type View struct {
 	H        int32
@@ -278,11 +298,12 @@ type Stage struct {
 	Dob
 	DurationPerTick int64
 	view            *View
+	SpawnId         int32
 }
 
 func (s *Stage) Tick(tick int32) {
-	for i := 0; i < len(s.spawn); i++ {
-		s.spawn[i].Tick(tick)
+	for _, v := range s.spawn {
+		v.Tick(tick)
 	}
 }
 
@@ -294,8 +315,8 @@ func (s *Stage) Paint() {
 	}
 
 	// paint dobs
-	for i := 0; i < len(s.spawn); i++ {
-		s.spawn[i].Paint()
+	for _, v := range s.spawn {
+		v.Paint()
 	}
 
 	s.view.Renderer.Present()

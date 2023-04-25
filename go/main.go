@@ -43,7 +43,8 @@ func main() {
 			Move(300, 120, 3*time.Second, nil).
 			Zoom(2, 0, nil).
 			Zoom(4, 3*time.Second, nil).
-			Zoom(1, 3*time.Second, gas.EaseInOutSin)
+			Zoom(1, 3*time.Second, gas.EaseInOutSin).
+			Exit()
 	}()
 
 	s.Play(30)
