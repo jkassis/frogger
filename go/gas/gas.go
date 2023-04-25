@@ -10,6 +10,8 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+var anID int64
+
 func Init() (err error) {
 	// init sdl
 	err = sdl.Init(sdl.INIT_AUDIO | sdl.INIT_EVENTS | sdl.INIT_TIMER | sdl.INIT_VIDEO)
@@ -78,10 +80,12 @@ type Dob struct {
 }
 
 func (d *Dob) Tick(tick int32) {
-	for j, anim := range d.anQ {
-		if anim.Tick(tick) {
-			d.anQ = append(d.anQ[:j], d.anQ[j+1:]...)
-			d.anQ = append(d.anQ, anim.AnQ()...)
+	for ID, an := range d.anQ {
+		if an.Tick(tick) {
+			delete(d.anQ, ID)
+			for nID, nAn := range an.AnQ() {
+				d.anQ[nID] = nAn
+			}
 		}
 	}
 }
@@ -113,24 +117,30 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 
 // An animates
 type An interface {
+	ID() int64
 	Tick(tick int32) bool
-	AnQ() []An
+	AnQ() map[int64]An
 }
 
 // BaseAn animates a dob
 type BaseAn struct {
+	id        int64
 	Dob       *Dob
-	anQ       []An
+	anQ       map[int64]An
 	duration  int64
 	easer     Ease
 	startTick int32
 }
 
+func (a *BaseAn) ID() int64 {
+	return a.id
+}
+
 func (a *BaseAn) add(b An) An {
 	if len(a.anQ) == 0 {
-		a.anQ = make([]An, 0)
+		a.anQ = make(map[int64]An, 0)
 	}
-	a.anQ = append(a.anQ, b)
+	a.anQ[b.ID()] = b
 	return b
 }
 
@@ -153,7 +163,7 @@ func (a *BaseAn) PC(tick int32) (raw float32, eased float32) {
 	return pct, a.easer(pct)
 }
 
-func (a *BaseAn) AnQ() []An {
+func (a *BaseAn) AnQ() map[int64]An {
 	return a.anQ
 }
 
@@ -162,7 +172,8 @@ func (a *BaseAn) Move(x float32, y float32, duration time.Duration, easer Ease) 
 	if easer == nil {
 		easer = EaseNone
 	}
-	b := &MoveAn{BaseAn: BaseAn{Dob: a.Dob, anQ: nil, duration: int64(duration), easer: easer}, endX: x, endY: y}
+	b := &MoveAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, duration: int64(duration), easer: easer}, endX: x, endY: y}
+	anID++
 	return a.add(b).(*MoveAn)
 }
 
@@ -197,7 +208,8 @@ func (a *BaseAn) Zoom(zoom float32, duration time.Duration, easer Ease) *ZoomAn 
 	if easer == nil {
 		easer = EaseNone
 	}
-	b := &ZoomAn{BaseAn: BaseAn{Dob: a.Dob, anQ: nil, duration: int64(duration), easer: easer}, endZoom: zoom}
+	b := &ZoomAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, duration: int64(duration), easer: easer}, endZoom: zoom}
+	anID++
 	return a.add(b).(*ZoomAn)
 }
 
@@ -219,7 +231,8 @@ type ExitAn struct {
 }
 
 func (a *BaseAn) Exit() *ExitAn {
-	b := &ExitAn{BaseAn: BaseAn{Dob: a.Dob, anQ: nil, duration: 0, easer: nil}}
+	b := &ExitAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, duration: 0, easer: nil}}
+	anID++
 	return a.add(b).(*ExitAn)
 }
 
