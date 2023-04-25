@@ -71,11 +71,12 @@ type Dob struct {
 	spawn   []*Dob
 	texture *Tex
 	w       int32
-	x       float64
-	y       float64
+	x       float32
+	y       float32
+	zoom    float32
 }
 
-func (d *Dob) Tick(tick int64) {
+func (d *Dob) Tick(tick int32) {
 	for j, anim := range d.anQ {
 		if anim.Tick(tick) {
 			d.anQ = append(d.anQ[:j], d.anQ[j+1:]...)
@@ -85,13 +86,16 @@ func (d *Dob) Tick(tick int64) {
 }
 
 func (d *Dob) Paint() {
-	src := sdl.Rect{X: 0, Y: 0, W: d.w * 2, H: d.h * 2}
-	dst := sdl.Rect{X: int32(d.x), Y: int32(d.y), W: d.w, H: d.h}
+	src := sdl.Rect{X: 0, Y: 0, W: d.w, H: d.h}
+	dst := sdl.Rect{X: int32(d.x - d.zoom*float32(d.w)/2), Y: int32(d.y - d.zoom*float32(d.h)/2), W: int32(d.zoom * float32(d.w)), H: int32(d.zoom * float32(d.h))}
 	d.stage.view.Renderer.Copy(d.texture.SDLTexture, &src, &dst)
 }
 
 func (d *Dob) Spawn(path string) (dob *Dob, err error) {
-	dob = &Dob{stage: d.stage}
+	dob = &Dob{
+		stage: d.stage,
+		zoom:  1,
+	}
 	dob.texture, _ = d.stage.view.TextureLoad(path)
 	dob.h = dob.texture.H
 	dob.w = dob.texture.W
@@ -105,65 +109,103 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 
 // An animates
 type An interface {
-	Tick(tick int64) bool
+	Tick(tick int32) bool
 	AnQ() []An
 }
 
 // BaseAn animates a dob
 type BaseAn struct {
-	Dob *Dob
-	anQ []An
+	Dob       *Dob
+	anQ       []An
+	duration  int64
+	easer     Ease
+	startTick int32
 }
 
-func (b *BaseAn) add(a An) An {
-	if len(b.anQ) == 0 {
-		b.anQ = make([]An, 0)
+func (a *BaseAn) add(b An) An {
+	if len(a.anQ) == 0 {
+		a.anQ = make([]An, 0)
 	}
-	b.anQ = append(b.anQ, a)
-	return a
+	a.anQ = append(a.anQ, b)
+	return b
 }
 
-func (m *BaseAn) Tick(tick int64) bool {
+// Tick never ends for BaseAn
+func (a *BaseAn) Tick(tick int32) bool {
 	return false
 }
 
-func (m *BaseAn) AnQ() []An {
-	return m.anQ
+// PC returns percent complete
+func (a *BaseAn) PC(tick int32) (raw float32, eased float32) {
+	var pct float32
+	if a.duration == 0 {
+		pct = 1.0
+	} else {
+		pct = float32(tick-a.startTick) * float32(a.Dob.stage.DurationPerTick) / float32(a.duration)
+		if pct > .99 {
+			pct = 1
+		}
+	}
+	return pct, a.easer(pct)
 }
 
-func (b *BaseAn) Move(x float64, y float64, duration time.Duration, easer Ease) *MoveAn {
-	if easer == nil {
-		easer = EaseNone
-	}
-	moveAnim := &MoveAn{BaseAn: BaseAn{Dob: b.Dob, anQ: nil}, endX: x, endY: y, duration: int64(duration), easer: easer}
-	return b.add(moveAnim).(*MoveAn)
+func (a *BaseAn) AnQ() []An {
+	return a.anQ
 }
 
 // Move Anim
-type MoveAn struct {
-	BaseAn
-	easer     Ease
-	deltaX    float64
-	deltaY    float64
-	duration  int64
-	endX      float64
-	endY      float64
-	startTick int64
+func (a *BaseAn) Move(x float32, y float32, duration time.Duration, easer Ease) *MoveAn {
+	if easer == nil {
+		easer = EaseNone
+	}
+	b := &MoveAn{BaseAn: BaseAn{Dob: a.Dob, anQ: nil, duration: int64(duration), easer: easer}, endX: x, endY: y}
+	return a.add(b).(*MoveAn)
 }
 
-func (m *MoveAn) Tick(tick int64) bool {
-	if m.startTick == 0 {
-		m.startTick = tick
-		m.deltaX = m.endX - m.Dob.x
-		m.deltaY = m.endY - m.Dob.y
+type MoveAn struct {
+	BaseAn
+	deltaX float32
+	deltaY float32
+	endX   float32
+	endY   float32
+}
+
+func (a *MoveAn) Tick(tick int32) bool {
+	if a.startTick == 0 {
+		a.startTick = tick
+		a.deltaX = a.endX - a.Dob.x
+		a.deltaY = a.endY - a.Dob.y
 	}
-	pct := float64(tick-m.startTick) * float64(m.Dob.stage.DurationPerTick) / float64(m.duration)
-	if pct > 1 {
-		pct = 1
+	pct, eased := a.PC(tick)
+	a.Dob.x = a.endX - a.deltaX + eased*a.deltaX
+	a.Dob.y = a.endY - a.deltaY + eased*a.deltaY
+	return pct == 1
+}
+
+// Zoom Anim
+type ZoomAn struct {
+	BaseAn
+	deltaZoom float32
+	endZoom   float32
+}
+
+func (a *BaseAn) Zoom(zoom float32, duration time.Duration, easer Ease) *ZoomAn {
+	if easer == nil {
+		easer = EaseNone
 	}
-	pctWEase := m.easer(pct)
-	m.Dob.x = m.endX - m.deltaX + pctWEase*m.deltaX
-	m.Dob.y = m.endY - m.deltaY + pctWEase*m.deltaY
+	b := &ZoomAn{BaseAn: BaseAn{Dob: a.Dob, anQ: nil, duration: int64(duration), easer: easer}, endZoom: zoom}
+	return a.add(b).(*ZoomAn)
+}
+
+func (a *ZoomAn) Tick(tick int32) bool {
+	if a.startTick == 0 {
+		a.startTick = tick
+		a.deltaZoom = a.endZoom - a.Dob.zoom
+	}
+
+	pct, eased := a.PC(tick)
+	a.Dob.zoom = a.endZoom - a.deltaZoom + eased*a.deltaZoom
+
 	return pct == 1
 }
 
@@ -238,7 +280,7 @@ type Stage struct {
 	view            *View
 }
 
-func (s *Stage) Tick(tick int64) {
+func (s *Stage) Tick(tick int32) {
 	for i := 0; i < len(s.spawn); i++ {
 		s.spawn[i].Tick(tick)
 	}
@@ -260,12 +302,12 @@ func (s *Stage) Paint() {
 }
 
 func (s *Stage) Play(fps int) {
-	msPerFrame := uint32(1000.0 / fps)
-	s.DurationPerTick = int64(msPerFrame) * int64(time.Millisecond)
+	msPerFrame := int64(1000.0 / fps)
+	s.DurationPerTick = msPerFrame * int64(time.Millisecond)
 
 	// loop until the user quits
 	running := true
-	var tick int64 = 1
+	var tick int32 = 1
 	for running {
 		s.Tick(tick)
 		s.Paint()
@@ -276,7 +318,7 @@ func (s *Stage) Play(fps int) {
 				running = false
 			}
 		}
-		sdl.Delay(msPerFrame)
+		sdl.Delay(uint32(msPerFrame))
 		tick++
 	}
 }

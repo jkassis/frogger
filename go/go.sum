@@ -1,2 +1,4 @@
+github.com/chewxy/math32 v1.10.1 h1:LFpeY0SLJXeaiej/eIp2L40VYfscTvKh/FSEZ68uMkU=
+github.com/chewxy/math32 v1.10.1/go.mod h1:dOB2rcuFrCn6UHrze36WSLVPKtzPMRAQvBvUwkSsLqs=
 github.com/veandco/go-sdl2 v0.4.30 h1:ZES8cWfk512B1OETAfw8BFbV5k6K4XE6rUlzfgj3KZA=
 github.com/veandco/go-sdl2 v0.4.30/go.mod h1:OROqMhHD43nT4/i9crJukyVecjPNYYuCofep6SNiAjY=

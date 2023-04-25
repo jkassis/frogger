@@ -36,9 +36,14 @@ func main() {
 
 	go func() {
 		greenBlock, _ := s.Spawn("img/block_green.png")
+
 		greenBlock.
+			// Move(120, 300, 3*time.Second, nil).
 			Move(120, 300, 3*time.Second, gas.EaseInOutSin).
-			Move(300, 120, 3*time.Second, nil)
+			Move(300, 120, 3*time.Second, nil).
+			Zoom(2, 0, nil).
+			Zoom(4, 3*time.Second, nil).
+			Zoom(1, 3*time.Second, gas.EaseInOutSin)
 	}()
 
 	s.Play(30)

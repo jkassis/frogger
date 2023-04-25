@@ -1,3 +1,6 @@
+# github.com/chewxy/math32 v1.10.1
+## explicit; go 1.13
+github.com/chewxy/math32
 # github.com/veandco/go-sdl2 v0.4.30
 ## explicit; go 1.15
 github.com/veandco/go-sdl2/img
