@@ -34,6 +34,9 @@ func main() {
 	s, err := view.MakeStage()
 	CHECK(err)
 
+	font, err := view.FontLoad("fonts/Montserrat-Regular.ttf", 48)
+	CHECK(err)
+
 	go func() {
 		greenBlock, _ := s.Root.Spawn("img/block_green.png")
 
@@ -63,6 +66,12 @@ func main() {
 
 		b.Move(600, 400, 3*time.Second, gas.EaseInOutSin).
 			Zoom(10, 3*time.Second, gas.EaseInOutSin)
+
+		frogger, _ := s.Root.Spawn("")
+		frogger.Color(0x00ff33)
+		frogger.Text(font, "Frogger")
+		frogger.Move(800, 300, 0, nil)
+		frogger.Move(400, 300, 3*time.Second, gas.EaseInOutSin)
 	}()
 
 	s.Play(30)

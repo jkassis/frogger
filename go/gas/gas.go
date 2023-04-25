@@ -8,6 +8,7 @@ import (
 	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/mix"
 	"github.com/veandco/go-sdl2/sdl"
+	"github.com/veandco/go-sdl2/ttf"
 )
 
 var anID int64
@@ -20,6 +21,10 @@ func Init() (err error) {
 		return err
 	}
 	err = img.Init(img.INIT_PNG)
+	if err != nil {
+		return err
+	}
+	err = ttf.Init()
 	if err != nil {
 		return err
 	}
@@ -69,10 +74,10 @@ func (w *Wav) Stop() {
 // Dob Display Object renders to the screen and animates
 type Dob struct {
 	BaseAn
-	c       [4]uint8 // color
-	d       [2]int32 // dim
-	px      float32  // posX
-	py      float32  // posY
+	c       sdl.Color // color
+	d       [2]int32  // dim
+	px      float32   // posX
+	py      float32   // posY
 	spawn   map[int64]*Dob
 	spawner *Dob
 	stage   *Stage
@@ -97,7 +102,7 @@ func (d *Dob) Tick(tick int32) {
 func (d *Dob) Paint() {
 	dst := sdl.Rect{X: int32(d.px - d.zoom*float32(d.d[0])/2), Y: int32(d.py - d.zoom*float32(d.d[1])/2), W: int32(d.zoom * float32(d.d[0])), H: int32(d.zoom * float32(d.d[1]))}
 	if d.texture == nil {
-		d.stage.view.Renderer.SetDrawColor(d.c[0], d.c[1], d.c[2], d.c[3])
+		d.stage.view.Renderer.SetDrawColor(d.c.R, d.c.G, d.c.B, d.c.A)
 		d.stage.view.Renderer.FillRect(&dst)
 	} else {
 		src := sdl.Rect{X: 0, Y: 0, W: d.d[0], H: d.d[1]}
@@ -110,10 +115,24 @@ func (d *Dob) Paint() {
 }
 
 func (d *Dob) Color(c uint32) {
-	d.c[0] = uint8(c >> 24)
-	d.c[1] = uint8(c << 8 >> 24)
-	d.c[2] = uint8(c << 16 >> 24)
-	d.c[3] = uint8(c << 24 >> 24)
+	d.c = sdl.Color{
+		R: uint8(c >> 24),
+		G: uint8(c << 8 >> 24),
+		B: uint8(c << 16 >> 24),
+		A: uint8(c << 24 >> 24),
+	}
+}
+
+func (d *Dob) Text(font *ttf.Font, t string) (err error) {
+	stext, err := font.RenderUTF8Solid(t, d.c)
+	if d.texture != nil && d.texture.SDLTexture != nil {
+		d.texture.SDLTexture.Destroy()
+	}
+	d.texture = &Tex{}
+	d.texture.SDLTexture, err = d.stage.view.Renderer.CreateTextureFromSurface(stext)
+	_, _, d.d[0], d.d[1], err = d.texture.SDLTexture.Query()
+	stext.Free()
+	return
 }
 
 func (d *Dob) Spawn(path string) (dob *Dob, err error) {
@@ -126,10 +145,7 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 	if path == "" {
 		dob.d[0] = 2
 		dob.d[1] = 2
-		dob.c[0] = 0xff
-		dob.c[1] = 0xff
-		dob.c[2] = 0xff
-		dob.c[3] = 0xff
+		dob.c = sdl.Color{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
 	} else {
 		dob.texture, _ = d.stage.view.TextureLoad(path)
 		dob.d[0] = dob.texture.W
@@ -349,6 +365,7 @@ type View struct {
 	View     *sdl.Window
 	W        int32
 	sounds   map[string]*Wav
+	fonts    map[string]*ttf.Font
 	textures map[string]*Tex
 }
 
@@ -357,6 +374,7 @@ func (v *View) Init() (err error) {
 	v.View.SetTitle(v.Title)
 	v.textures = make(map[string]*Tex)
 	v.sounds = make(map[string]*Wav)
+	v.fonts = make(map[string]*ttf.Font)
 	return
 }
 
@@ -408,6 +426,19 @@ func (v *View) SoundLoad(path string) (*Wav, error) {
 		snd = &Wav{View: v, Wav: wav}
 	}
 	return snd, nil
+}
+
+func (v *View) FontLoad(path string, size int) (font *ttf.Font, err error) {
+	var ok bool
+	font, ok = v.fonts[path+string(size)]
+	if !ok {
+		font, err = ttf.OpenFont(path, 48)
+		if err != nil {
+			return
+		}
+		v.fonts[path+string(size)] = font
+	}
+	return font, nil
 }
 
 // Stage is the root of the display tree
