@@ -36,7 +36,9 @@ func main() {
 
 	go func() {
 		greenBlock, _ := s.Spawn("img/block_green.png")
-		greenBlock.Move(120, 300, 3*time.Second, gas.EaseInOutSin)
+		greenBlock.
+			Move(120, 300, 3*time.Second, gas.EaseInOutSin).
+			Move(300, 120, 3*time.Second, nil)
 	}()
 
 	s.Play(30)

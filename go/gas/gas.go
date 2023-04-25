@@ -76,9 +76,10 @@ type Dob struct {
 }
 
 func (d *Dob) Tick(tick int64) {
-	for j, anim := range d.Anims {
+	for j, anim := range d.anQ {
 		if anim.Tick(tick) {
-			d.Anims = append(d.Anims[:j], d.Anims[j+1:]...)
+			d.anQ = append(d.anQ[:j], d.anQ[j+1:]...)
+			d.anQ = append(d.anQ, anim.AnQ()...)
 		}
 	}
 }
@@ -105,31 +106,37 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 // An animates
 type An interface {
 	Tick(tick int64) bool
+	AnQ() []An
 }
 
 // BaseAn animates a dob
 type BaseAn struct {
-	Dob   *Dob
-	Anims []An
+	Dob *Dob
+	anQ []An
 }
 
-func (b *BaseAn) anim(a An) An {
-	if len(b.Anims) == 0 {
-		b.Anims = make([]An, 0)
+func (b *BaseAn) add(a An) An {
+	if len(b.anQ) == 0 {
+		b.anQ = make([]An, 0)
 	}
-	b.Anims = append(b.Anims, a)
+	b.anQ = append(b.anQ, a)
 	return a
 }
 
-func (b *BaseAn) Move(x float64, y float64, duration time.Duration, easer Ease) An {
+func (m *BaseAn) Tick(tick int64) bool {
+	return false
+}
+
+func (m *BaseAn) AnQ() []An {
+	return m.anQ
+}
+
+func (b *BaseAn) Move(x float64, y float64, duration time.Duration, easer Ease) *MoveAn {
 	if easer == nil {
 		easer = EaseNone
 	}
-	moveAnim := &MoveAn{dob: b.Dob, endX: x, endY: y, duration: int64(duration), easer: easer}
-	return b.anim(moveAnim)
-}
-
-func (m *BaseAn) Tick(tick int64) {
+	moveAnim := &MoveAn{BaseAn: BaseAn{Dob: b.Dob, anQ: nil}, endX: x, endY: y, duration: int64(duration), easer: easer}
+	return b.add(moveAnim).(*MoveAn)
 }
 
 // Move Anim
@@ -138,7 +145,6 @@ type MoveAn struct {
 	easer     Ease
 	deltaX    float64
 	deltaY    float64
-	dob       *Dob
 	duration  int64
 	endX      float64
 	endY      float64
@@ -148,16 +154,16 @@ type MoveAn struct {
 func (m *MoveAn) Tick(tick int64) bool {
 	if m.startTick == 0 {
 		m.startTick = tick
-		m.deltaX = m.endX - m.dob.x
-		m.deltaY = m.endY - m.dob.y
+		m.deltaX = m.endX - m.Dob.x
+		m.deltaY = m.endY - m.Dob.y
 	}
-	pct := float64(tick-m.startTick) * float64(m.dob.stage.DurationPerTick) / float64(m.duration)
+	pct := float64(tick-m.startTick) * float64(m.Dob.stage.DurationPerTick) / float64(m.duration)
 	if pct > 1 {
 		pct = 1
 	}
 	pctWEase := m.easer(pct)
-	m.dob.x = m.endX - m.deltaX + pctWEase*m.deltaX
-	m.dob.y = m.endY - m.deltaY + pctWEase*m.deltaY
+	m.Dob.x = m.endX - m.deltaX + pctWEase*m.deltaX
+	m.Dob.y = m.endY - m.deltaY + pctWEase*m.deltaY
 	return pct == 1
 }
 
