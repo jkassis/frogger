@@ -68,14 +68,14 @@ func (w *Wav) Stop() {
 // Dob Display Object renders to the screen and animates
 type Dob struct {
 	BaseAn
-	h       int32
+	c       [4]uint8 // color
+	d       [2]int32 // dim
 	id      int32
+	px      float32 // posX
+	py      float32 // posY
 	spawn   map[int32]*Dob
 	stage   *Stage
 	texture *Tex
-	w       int32
-	x       float32
-	y       float32
 	zoom    float32
 }
 
@@ -91,9 +91,21 @@ func (d *Dob) Tick(tick int32) {
 }
 
 func (d *Dob) Paint() {
-	src := sdl.Rect{X: 0, Y: 0, W: d.w, H: d.h}
-	dst := sdl.Rect{X: int32(d.x - d.zoom*float32(d.w)/2), Y: int32(d.y - d.zoom*float32(d.h)/2), W: int32(d.zoom * float32(d.w)), H: int32(d.zoom * float32(d.h))}
-	d.stage.view.Renderer.Copy(d.texture.SDLTexture, &src, &dst)
+	dst := sdl.Rect{X: int32(d.px - d.zoom*float32(d.d[0])/2), Y: int32(d.py - d.zoom*float32(d.d[1])/2), W: int32(d.zoom * float32(d.d[0])), H: int32(d.zoom * float32(d.d[1]))}
+	if d.texture == nil {
+		d.stage.view.Renderer.SetDrawColor(d.c[0], d.c[1], d.c[2], d.c[3])
+		d.stage.view.Renderer.FillRect(&dst)
+	} else {
+		src := sdl.Rect{X: 0, Y: 0, W: d.d[0], H: d.d[1]}
+		d.stage.view.Renderer.Copy(d.texture.SDLTexture, &src, &dst)
+	}
+}
+
+func (d *Dob) Color(c uint32) {
+	d.c[0] = uint8(c >> 24)
+	d.c[1] = uint8(c << 8 >> 24)
+	d.c[2] = uint8(c << 16 >> 24)
+	d.c[3] = uint8(c << 24 >> 24)
 }
 
 func (d *Dob) Spawn(path string) (dob *Dob, err error) {
@@ -103,14 +115,23 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 		zoom:  1,
 	}
 	d.stage.SpawnId++
-	dob.texture, _ = d.stage.view.TextureLoad(path)
-	dob.h = dob.texture.H
-	dob.w = dob.texture.W
+	if path == "" {
+		dob.d[0] = 2
+		dob.d[1] = 2
+		dob.c[0] = 0xff
+		dob.c[1] = 0xff
+		dob.c[2] = 0xff
+		dob.c[3] = 0xff
+	} else {
+		dob.texture, _ = d.stage.view.TextureLoad(path)
+		dob.d[0] = dob.texture.W
+		dob.d[1] = dob.texture.H
+	}
 	dob.BaseAn.Dob = dob
+
 	if d.spawn == nil {
 		d.spawn = make(map[int32]*Dob, 0)
 	}
-
 	d.spawn[dob.id] = dob
 	return
 }
@@ -188,12 +209,12 @@ type MoveAn struct {
 func (a *MoveAn) Tick(tick int32) bool {
 	if a.startTick == 0 {
 		a.startTick = tick
-		a.deltaX = a.endX - a.Dob.x
-		a.deltaY = a.endY - a.Dob.y
+		a.deltaX = a.endX - a.Dob.px
+		a.deltaY = a.endY - a.Dob.py
 	}
 	pct, eased := a.PC(tick)
-	a.Dob.x = a.endX - a.deltaX + eased*a.deltaX
-	a.Dob.y = a.endY - a.deltaY + eased*a.deltaY
+	a.Dob.px = a.endX - a.deltaX + eased*a.deltaX
+	a.Dob.py = a.endY - a.deltaY + eased*a.deltaY
 	return pct == 1
 }
 
@@ -270,6 +291,7 @@ func (v *View) MakeStage() (s *Stage, err error) {
 	s = &Stage{view: v}
 	s.Dob.stage = s
 	v.Stage = s
+	s.Color(0xffffffff)
 	return
 }
 
@@ -308,10 +330,18 @@ func (v *View) SoundLoad(path string) (*Wav, error) {
 
 // Stage is the root of the display tree
 type Stage struct {
+	c [4]uint8 // color
 	Dob
 	DurationPerTick int64
 	view            *View
 	SpawnId         int32
+}
+
+func (s *Stage) Color(c uint32) {
+	s.c[0] = uint8(c >> 24)
+	s.c[1] = uint8(c << 8 >> 24)
+	s.c[2] = uint8(c << 16 >> 24)
+	s.c[3] = uint8(c << 24 >> 24)
 }
 
 func (s *Stage) Tick(tick int32) {
@@ -322,6 +352,7 @@ func (s *Stage) Tick(tick int32) {
 
 func (s *Stage) Paint() {
 	// clear
+	s.view.Renderer.SetDrawColor(s.c[0], s.c[1], s.c[2], s.c[3])
 	err := s.view.Renderer.Clear()
 	if err != nil {
 		panic(err)

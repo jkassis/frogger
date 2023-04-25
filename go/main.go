@@ -38,15 +38,25 @@ func main() {
 		greenBlock, _ := s.Spawn("img/block_green.png")
 
 		// move then zoom
-		t := greenBlock.
+		a := greenBlock.
 			Move(120, 300, 3*time.Second, gas.EaseInOutSin).
 			Zoom(2, 0, nil)
 
 			// move and zoom
-		t.Move(300, 120, 3*time.Second, nil)
-		t.Zoom(4, 3*time.Second, nil).
+		a.Move(300, 120, 3*time.Second, nil)
+		a.Zoom(4, 3*time.Second, nil).
 			Zoom(1, 3*time.Second, gas.EaseInOutSin).
 			Exit()
+
+		// rainbow block
+		rainbowBlock, _ := s.Spawn("")
+		rainbowBlock.Color(0xff3333dd)
+		b := rainbowBlock.
+			Move(50, 50, 0, nil).
+			Move(120, 300, 3*time.Second, gas.EaseInOutSin)
+
+		b.Move(600, 400, 3*time.Second, gas.EaseInOutSin).
+			Zoom(10, 3*time.Second, gas.EaseInOutSin)
 	}()
 
 	s.Play(30)
