@@ -35,7 +35,7 @@ func main() {
 	CHECK(err)
 
 	go func() {
-		greenBlock, _ := s.Spawn("img/block_green.png")
+		greenBlock, _ := s.Root.Spawn("img/block_green.png")
 
 		// move then zoom
 		a := greenBlock.
@@ -46,11 +46,17 @@ func main() {
 		a.Move(300, 120, 3*time.Second, nil)
 		a.Zoom(4, 3*time.Second, nil).
 			Zoom(1, 3*time.Second, gas.EaseInOutSin).
-			Exit()
+			End()
 
 		// rainbow block
-		rainbowBlock, _ := s.Spawn("")
+		rainbowBlock, _ := s.Root.Spawn("")
 		rainbowBlock.Color(0xff3333dd)
+		rainbowBlock.Emit(rainbowBlock, 20, 500*time.Millisecond, 3*time.Second, s.Root, gas.EaseInOutSinInv, func(d *gas.Dob) {
+			x := float32(view.W) * rand.Float32()
+			y := float32(view.H) * rand.Float32()
+			dur := time.Second + time.Duration(rand.Float32()*float32(3*time.Second))
+			d.Move(x, y, dur, nil).End()
+		})
 		b := rainbowBlock.
 			Move(50, 50, 0, nil).
 			Move(120, 300, 3*time.Second, gas.EaseInOutSin)

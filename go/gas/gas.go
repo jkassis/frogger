@@ -11,6 +11,7 @@ import (
 )
 
 var anID int64
+var dobID int64
 
 func Init() (err error) {
 	// init sdl
@@ -70,10 +71,10 @@ type Dob struct {
 	BaseAn
 	c       [4]uint8 // color
 	d       [2]int32 // dim
-	id      int32
-	px      float32 // posX
-	py      float32 // posY
-	spawn   map[int32]*Dob
+	px      float32  // posX
+	py      float32  // posY
+	spawn   map[int64]*Dob
+	spawner *Dob
 	stage   *Stage
 	texture *Tex
 	zoom    float32
@@ -88,6 +89,9 @@ func (d *Dob) Tick(tick int32) {
 			}
 		}
 	}
+	for _, spawn := range d.spawn {
+		spawn.Tick(tick)
+	}
 }
 
 func (d *Dob) Paint() {
@@ -98,6 +102,10 @@ func (d *Dob) Paint() {
 	} else {
 		src := sdl.Rect{X: 0, Y: 0, W: d.d[0], H: d.d[1]}
 		d.stage.view.Renderer.Copy(d.texture.SDLTexture, &src, &dst)
+	}
+
+	for _, spawn := range d.spawn {
+		spawn.Paint()
 	}
 }
 
@@ -110,11 +118,11 @@ func (d *Dob) Color(c uint32) {
 
 func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 	dob = &Dob{
-		id:    d.stage.SpawnId,
-		stage: d.stage,
-		zoom:  1,
+		BaseAn: BaseAn{id: dobID},
+		stage:  d.stage,
+		zoom:   1,
 	}
-	d.stage.SpawnId++
+	dobID++
 	if path == "" {
 		dob.d[0] = 2
 		dob.d[1] = 2
@@ -129,11 +137,20 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 	}
 	dob.BaseAn.Dob = dob
 
+	dob.spawner = d
 	if d.spawn == nil {
-		d.spawn = make(map[int32]*Dob, 0)
+		d.spawn = make(map[int64]*Dob, 0)
 	}
 	d.spawn[dob.id] = dob
 	return
+}
+
+func (a *Dob) SpawnRm(b *Dob) {
+	delete(a.spawn, b.id)
+}
+
+func (a *Dob) SpawnAdd(b *Dob) {
+	a.spawn[b.id] = b
 }
 
 // An animates
@@ -148,9 +165,9 @@ type BaseAn struct {
 	id        int64
 	Dob       *Dob
 	anQ       map[int64]An
-	duration  int64
-	easer     Ease
-	startTick int32
+	Duration  int64
+	Easer     Ease
+	StartTick int32
 }
 
 func (a *BaseAn) ID() int64 {
@@ -173,15 +190,15 @@ func (a *BaseAn) Tick(tick int32) bool {
 // PC returns percent complete
 func (a *BaseAn) PC(tick int32) (raw float32, eased float32) {
 	var pct float32
-	if a.duration == 0 {
+	if a.Duration == 0 {
 		pct = 1.0
 	} else {
-		pct = float32(tick-a.startTick) * float32(a.Dob.stage.DurationPerTick) / float32(a.duration)
+		pct = float32(tick-a.StartTick) * float32(a.Dob.stage.DurationPerTick) / float32(a.Duration)
 		if pct > .99 {
 			pct = 1
 		}
 	}
-	return pct, a.easer(pct)
+	return pct, a.Easer(pct)
 }
 
 func (a *BaseAn) AnQ() map[int64]An {
@@ -193,7 +210,7 @@ func (a *BaseAn) Move(x float32, y float32, duration time.Duration, easer Ease) 
 	if easer == nil {
 		easer = EaseNone
 	}
-	b := &MoveAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, duration: int64(duration), easer: easer}, endX: x, endY: y}
+	b := &MoveAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: int64(duration), Easer: easer}, endX: x, endY: y}
 	anID++
 	return a.add(b).(*MoveAn)
 }
@@ -207,8 +224,8 @@ type MoveAn struct {
 }
 
 func (a *MoveAn) Tick(tick int32) bool {
-	if a.startTick == 0 {
-		a.startTick = tick
+	if a.StartTick == 0 {
+		a.StartTick = tick
 		a.deltaX = a.endX - a.Dob.px
 		a.deltaY = a.endY - a.Dob.py
 	}
@@ -229,14 +246,14 @@ func (a *BaseAn) Zoom(zoom float32, duration time.Duration, easer Ease) *ZoomAn 
 	if easer == nil {
 		easer = EaseNone
 	}
-	b := &ZoomAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, duration: int64(duration), easer: easer}, endZoom: zoom}
+	b := &ZoomAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: int64(duration), Easer: easer}, endZoom: zoom}
 	anID++
 	return a.add(b).(*ZoomAn)
 }
 
 func (a *ZoomAn) Tick(tick int32) bool {
-	if a.startTick == 0 {
-		a.startTick = tick
+	if a.StartTick == 0 {
+		a.StartTick = tick
 		a.deltaZoom = a.endZoom - a.Dob.zoom
 	}
 
@@ -246,20 +263,80 @@ func (a *ZoomAn) Tick(tick int32) bool {
 	return pct == 1
 }
 
+// Spawn Anim
+type EmitAn struct {
+	BaseAn
+	handler      func(*Dob)
+	interval     time.Duration
+	lastEmitTick int32
+	qty          int
+	target       *Dob
+	template     *Dob
+}
+
+func (a *BaseAn) Emit(template *Dob, qty int, delayEach time.Duration, duration time.Duration, target *Dob, easer Ease, handler func(*Dob)) *EmitAn {
+	if easer == nil {
+		easer = EaseNone
+	}
+	b := &EmitAn{
+		qty:      qty,
+		BaseAn:   BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: int64(duration), Easer: easer},
+		template: template,
+		interval: delayEach,
+		target:   target,
+		handler:  handler,
+	}
+	anID++
+	return a.add(b).(*EmitAn)
+}
+
+func (a *EmitAn) Tick(tick int32) bool {
+	pct, _ := a.PC(tick)
+	if a.StartTick == 0 || ((tick-a.lastEmitTick)*int32(a.Dob.stage.DurationPerTick) > int32(a.interval)) {
+		a.lastEmitTick = tick
+
+		for i := 0; i < a.qty; i++ {
+			c := a.template
+			b, _ := c.Spawn("")
+			b.c = c.c
+			b.d = c.d
+			b.Duration = c.Duration
+			b.Easer = c.Easer
+			b.px = c.px
+			b.py = c.py
+			b.stage = c.stage
+			b.texture = c.texture
+			b.zoom = c.zoom
+			b.StartTick = 0
+
+			if a.target != nil {
+				delete(c.spawn, b.id)
+				a.target.spawn[b.id] = b
+				b.spawner = a.target
+			}
+			a.handler(b)
+		}
+	}
+	if a.StartTick == 0 {
+		a.StartTick = tick
+	}
+	return pct == 1
+}
+
 // Zoom Anim
-type ExitAn struct {
+type EndAn struct {
 	BaseAn
 }
 
-func (a *BaseAn) Exit() *ExitAn {
-	b := &ExitAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, duration: 0, easer: nil}}
+func (a *BaseAn) End() *EndAn {
+	b := &EndAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: 0, Easer: nil}}
 	anID++
-	return a.add(b).(*ExitAn)
+	return a.add(b).(*EndAn)
 }
 
-func (a *ExitAn) Tick(tick int32) bool {
-	delete(a.Dob.stage.spawn, a.Dob.id)
-	a.Dob.stage = nil
+func (a *EndAn) Tick(tick int32) bool {
+	delete(a.Dob.spawner.spawn, a.Dob.id)
+	a.Dob.spawner = nil
 	return true
 }
 
@@ -289,9 +366,14 @@ func (v *View) Destroy() {
 
 func (v *View) MakeStage() (s *Stage, err error) {
 	s = &Stage{view: v}
-	s.Dob.stage = s
+	s.Root = &Dob{stage: s, zoom: 1}
+	s.Root.d[0] = v.W
+	s.Root.d[1] = v.H
+	s.Root.px = float32(v.W / 2)
+	s.Root.py = float32(v.H / 2)
+	s.Root.Color(0xffffffff)
+	dobID++
 	v.Stage = s
-	s.Color(0xffffffff)
 	return
 }
 
@@ -330,40 +412,9 @@ func (v *View) SoundLoad(path string) (*Wav, error) {
 
 // Stage is the root of the display tree
 type Stage struct {
-	c [4]uint8 // color
-	Dob
 	DurationPerTick int64
 	view            *View
-	SpawnId         int32
-}
-
-func (s *Stage) Color(c uint32) {
-	s.c[0] = uint8(c >> 24)
-	s.c[1] = uint8(c << 8 >> 24)
-	s.c[2] = uint8(c << 16 >> 24)
-	s.c[3] = uint8(c << 24 >> 24)
-}
-
-func (s *Stage) Tick(tick int32) {
-	for _, v := range s.spawn {
-		v.Tick(tick)
-	}
-}
-
-func (s *Stage) Paint() {
-	// clear
-	s.view.Renderer.SetDrawColor(s.c[0], s.c[1], s.c[2], s.c[3])
-	err := s.view.Renderer.Clear()
-	if err != nil {
-		panic(err)
-	}
-
-	// paint dobs
-	for _, v := range s.spawn {
-		v.Paint()
-	}
-
-	s.view.Renderer.Present()
+	Root            *Dob
 }
 
 func (s *Stage) Play(fps int) {
@@ -374,8 +425,12 @@ func (s *Stage) Play(fps int) {
 	running := true
 	var tick int32 = 1
 	for running {
-		s.Tick(tick)
-		s.Paint()
+		// wonder if performance of clear is better
+		// s.view.Renderer.SetDrawColor(0xff, 0xff, 0xff, 0xff)
+		// s.view.Renderer.Clear()
+		s.Root.Tick(tick)
+		s.Root.Paint()
+		s.view.Renderer.Present()
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch event.(type) {
 			case *sdl.QuitEvent:
