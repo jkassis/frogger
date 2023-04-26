@@ -39,6 +39,7 @@ I like to avoid use of the shift key, so snake_case and PascalCase are right out
 
 That said, I'm flexible to whatever the team chooses and prefer opinionated languages like GoLang that strictly enforce style.
 
+![GAS Stillshot](https://raw.githubusercontent.com/jkassis/gas/main/screens/frogger.intro.1.png)
 
 Known Issues
 -----------------------
