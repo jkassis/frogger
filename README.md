@@ -23,7 +23,7 @@ I feel this strategy helps...
   * control entropy since I only need to "think" in one order (dot-order).
   * improve maintainability... because remembering the abbreviation over time becomes difficult.
 
-I like to avoid use of the shift key so snake_case and PascalCase are out for me. Kebab-case isn't bad, but I prefer camelCase to keep things tight.
+I like to avoid use of the shift key, so snake_case and PascalCase are right out for me. Kebab-case isn't bad, but I prefer camelCase to keep things tight.
 
 That said, I'm flexible to whatever the team chooses and prefer opinionated languages like GoLang that strictly enforce style.
 
@@ -42,13 +42,6 @@ GoLang
   This systems should recycle dobs to avoid garbage collection. Currently no pooling of textures, dobs, etc.
 * z-layering
   Controlled by OrderedMaps, which I have not benchmarked, tested thoroughly.
-
-
-
-
-
-
-
 
 
 ## License
