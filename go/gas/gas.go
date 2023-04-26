@@ -184,6 +184,7 @@ func (s *Stage) Play(fps int) {
 // Supports animation, z-layer nesting, etc.
 type Dob struct {
 	BaseAn
+	angle   float64                     // angle to rotate
 	D       [2]int32                    // dim
 	FillC   sdl.Color                   // color to render if texture is nil
 	Px      float32                     // posX
@@ -232,7 +233,7 @@ func (d *Dob) Paint() {
 	dst := sdl.Rect{X: int32(d.Px - d.Scale*d.zoom*float32(d.D[0])/2), Y: int32(d.Py - d.Scale*d.zoom*float32(d.D[1])/2), W: int32(d.Scale * d.zoom * float32(d.D[0])), H: int32(d.Scale * d.zoom * float32(d.D[1]))}
 	if d.Texture != nil {
 		src := sdl.Rect{X: 0, Y: 0, W: d.D[0], H: d.D[1]}
-		d.Stage.view.Renderer.Copy(d.Texture.SDLTexture, &src, &dst)
+		d.Stage.view.Renderer.CopyEx(d.Texture.SDLTexture, &src, &dst, d.angle, nil, sdl.FLIP_NONE)
 	} else if d.FillC.A > 0 {
 		d.Stage.view.Renderer.SetDrawColor(d.FillC.R, d.FillC.G, d.FillC.B, d.FillC.A)
 		d.Stage.view.Renderer.FillRect(&dst)
@@ -310,9 +311,10 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 	dobID++
 	dob = &Dob{
 		BaseAn: BaseAn{id: dobID},
-		Stage:  d.Stage,
-		zoom:   1,
 		Scale:  d.Scale,
+		Stage:  d.Stage,
+		angle:  d.angle,
+		zoom:   1,
 	}
 	if path == "" {
 		// spawn a color rectangle
@@ -421,9 +423,9 @@ func (a *BaseAn) AnSet() map[int64]An {
 }
 
 // Move sets the position, but does not create a new An. returns the last an added
-func (a *BaseAn) Move(x float32, y float32) *BaseAn {
-	a.dob.Px = x
-	a.dob.Py = y
+func (a *BaseAn) Move(dstX float32, dstY float32) *BaseAn {
+	a.dob.Px = dstX
+	a.dob.Py = dstY
 	return a
 }
 
@@ -432,63 +434,98 @@ type MoveToAn struct {
 	BaseAn
 	deltaX float32
 	deltaY float32
-	endX   float32
-	endY   float32
+	dstX   float32
+	dstY   float32
 }
 
 // MoveTo yields a MoveAn for BaseAn.Dob
-func (a *BaseAn) MoveTo(x float32, y float32, duration time.Duration, easer Ease) *MoveToAn {
+func (a *BaseAn) MoveTo(dstX float32, dstY float32, duration time.Duration, easer Ease) *MoveToAn {
 	anID++
 	if easer == nil {
 		easer = EaseNone
 	}
-	b := &MoveToAn{BaseAn: BaseAn{id: anID, dob: a.dob, anSet: nil, Duration: int64(duration), Easer: easer}, endX: x, endY: y}
+	b := &MoveToAn{BaseAn: BaseAn{id: anID, dob: a.dob, anSet: nil, Duration: int64(duration), Easer: easer}, dstX: dstX, dstY: dstY}
 	return a.AnSetAdd(b).(*MoveToAn)
 }
 
 func (a *MoveToAn) Tick(tick int32) bool {
 	if a.StartTick == 0 {
 		a.StartTick = tick
-		a.deltaX = a.endX - a.dob.Px
-		a.deltaY = a.endY - a.dob.Py
+		a.deltaX = a.dstX - a.dob.Px
+		a.deltaY = a.dstY - a.dob.Py
 	}
 	pct, eased := a.PC(tick)
-	a.dob.Px = a.endX - a.deltaX + eased*a.deltaX
-	a.dob.Py = a.endY - a.deltaY + eased*a.deltaY
+	a.dob.Px = a.dstX - a.deltaX + eased*a.deltaX
+	a.dob.Py = a.dstY - a.deltaY + eased*a.deltaY
+	return pct == 1
+}
+
+// Spin sets the spin angle, but does not create a new An. returns the last an added
+func (a *BaseAn) Spin(dst float64) *BaseAn {
+	a.dob.angle = dst
+	return a
+}
+
+// SpinAn animates the spin angle for a dob with easing
+type SpinAn struct {
+	BaseAn
+	delta float64
+	dst   float64
+}
+
+// SpinTo yields a SpinAn for BaseAn.Dob
+func (a *BaseAn) SpinTo(dst float64, duration time.Duration, easer Ease) *SpinAn {
+	anID++
+	if easer == nil {
+		easer = EaseNone
+	}
+	b := &SpinAn{BaseAn: BaseAn{id: anID, dob: a.dob, anSet: nil, Duration: int64(duration), Easer: easer}, dst: dst}
+	return a.AnSetAdd(b).(*SpinAn)
+}
+
+func (a *SpinAn) Tick(tick int32) bool {
+	if a.StartTick == 0 {
+		a.StartTick = tick
+		a.delta = a.dst - a.dob.angle
+	}
+
+	pct, eased := a.PC(tick)
+	a.dob.angle = a.dst - a.delta + float64(eased)*a.delta
+
 	return pct == 1
 }
 
 // Zoom sets the zoom, but does not create a new An. returns the last an added
-func (a *BaseAn) Zoom(z float32) *BaseAn {
-	a.dob.zoom = z
+func (a *BaseAn) Zoom(dst float32) *BaseAn {
+	a.dob.zoom = dst
 	return a
 }
 
 // ZoomAn animates the zoom factor for a dob with easing
 type ZoomAn struct {
 	BaseAn
-	deltaZoom float32
-	endZoom   float32
+	delta float32
+	dst   float32
 }
 
 // ZoomTo yields a ZoomAn for BaseAn.Dob
-func (a *BaseAn) ZoomTo(zoom float32, duration time.Duration, easer Ease) *ZoomAn {
+func (a *BaseAn) ZoomTo(dst float32, duration time.Duration, easer Ease) *ZoomAn {
 	anID++
 	if easer == nil {
 		easer = EaseNone
 	}
-	b := &ZoomAn{BaseAn: BaseAn{id: anID, dob: a.dob, anSet: nil, Duration: int64(duration), Easer: easer}, endZoom: zoom}
+	b := &ZoomAn{BaseAn: BaseAn{id: anID, dob: a.dob, anSet: nil, Duration: int64(duration), Easer: easer}, dst: dst}
 	return a.AnSetAdd(b).(*ZoomAn)
 }
 
 func (a *ZoomAn) Tick(tick int32) bool {
 	if a.StartTick == 0 {
 		a.StartTick = tick
-		a.deltaZoom = a.endZoom - a.dob.zoom
+		a.delta = a.dst - a.dob.zoom
 	}
 
 	pct, eased := a.PC(tick)
-	a.dob.zoom = a.endZoom - a.deltaZoom + eased*a.deltaZoom
+	a.dob.zoom = a.dst - a.delta + eased*a.delta
 
 	return pct == 1
 }

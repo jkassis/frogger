@@ -74,7 +74,7 @@ func main() {
 				d.MoveTo(300, 120, 2*time.Second, nil)
 				d.ZoomTo(4, 2*time.Second, nil).
 					Then(func(d *gas.Dob) {
-						// move an zoom again. note how these race to Exit
+						// move and zoom again. note how these race to Exit
 						d.ZoomTo(.25, 3*time.Second, gas.EaseInOutSin).Exit()
 						d.MoveTo(330, 280, 3*time.Second, nil)
 					})
@@ -111,10 +111,14 @@ func main() {
 				if rand.Intn(100) < 25 {
 					d.Texture = heart3.Texture
 				}
+				spinDst := -90 + 180*rand.Float64()
+				spinDuration := time.Second + gas.RandDuration(4*time.Second)
+				d.SpinTo(spinDst, spinDuration, nil)
+
 				x := float32(view.W) * rand.Float32()
 				y := float32(view.H) * rand.Float32()
-				dur := time.Second + time.Duration(rand.Float32()*float32(3*time.Second))
-				d.MoveTo(x, y, dur, nil).Exit()
+				moveDur := 2*time.Second + gas.RandDuration(4*time.Second)
+				d.MoveTo(x, y, moveDur, nil).Exit()
 			})
 
 		return done
