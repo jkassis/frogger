@@ -13,6 +13,7 @@ import (
 
 var anID int64
 var dobID int64
+var dobsPainted int64
 
 func Init() (err error) {
 	// init sdl
@@ -20,7 +21,7 @@ func Init() (err error) {
 	if err != nil {
 		return err
 	}
-	err = img.Init(img.INIT_PNG)
+	err = img.Init(img.INIT_PNG | img.INIT_JPG)
 	if err != nil {
 		return err
 	}
@@ -85,6 +86,7 @@ type Dob struct {
 	Stage    *Stage
 	Texture  *Tex
 	zoom     float32
+	ZoomBase float32
 }
 
 func (d *Dob) Tick(tick int32) {
@@ -102,13 +104,14 @@ func (d *Dob) Tick(tick int32) {
 }
 
 func (d *Dob) Paint() {
-	dst := sdl.Rect{X: int32(d.Px - d.zoom*float32(d.D[0])/2), Y: int32(d.Py - d.zoom*float32(d.D[1])/2), W: int32(d.zoom * float32(d.D[0])), H: int32(d.zoom * float32(d.D[1]))}
-	if d.Texture == nil {
-		d.Stage.view.Renderer.SetDrawColor(d.fillC.R, d.fillC.G, d.fillC.B, d.fillC.A)
-		d.Stage.view.Renderer.FillRect(&dst)
-	} else {
+	dobsPainted++
+	dst := sdl.Rect{X: int32(d.Px - d.ZoomBase*d.zoom*float32(d.D[0])/2), Y: int32(d.Py - d.ZoomBase*d.zoom*float32(d.D[1])/2), W: int32(d.ZoomBase * d.zoom * float32(d.D[0])), H: int32(d.ZoomBase * d.zoom * float32(d.D[1]))}
+	if d.Texture != nil {
 		src := sdl.Rect{X: 0, Y: 0, W: d.D[0], H: d.D[1]}
 		d.Stage.view.Renderer.Copy(d.Texture.SDLTexture, &src, &dst)
+	} else if d.fillC.A > 0 {
+		d.Stage.view.Renderer.SetDrawColor(d.fillC.R, d.fillC.G, d.fillC.B, d.fillC.A)
+		d.Stage.view.Renderer.FillRect(&dst)
 	}
 
 	for _, spawn := range d.spawn {
@@ -165,9 +168,10 @@ func (d *Dob) Text(font *ttf.Font, t string) (err error) {
 
 func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 	dob = &Dob{
-		BaseAn: BaseAn{id: dobID},
-		Stage:  d.Stage,
-		zoom:   1,
+		BaseAn:   BaseAn{id: dobID},
+		Stage:    d.Stage,
+		zoom:     1,
+		ZoomBase: d.ZoomBase,
 	}
 	dobID++
 	if path == "" {
@@ -367,7 +371,24 @@ func (a *EmitAn) Tick(tick int32) bool {
 	return pct == 1
 }
 
-// Zoom Anim
+// ThenAn
+type ThenAn struct {
+	BaseAn
+	fn func()
+}
+
+func (a *BaseAn) Then(fn func()) *ThenAn {
+	b := &ThenAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: 0, Easer: nil}, fn: fn}
+	anID++
+	return a.add(b).(*ThenAn)
+}
+
+func (a *ThenAn) Tick(tick int32) bool {
+	a.fn()
+	return true
+}
+
+// EndAn
 type EndAn struct {
 	BaseAn
 }
@@ -417,7 +438,8 @@ func (v *View) MakeStage() (s *Stage, err error) {
 	s.Root.D[1] = v.H
 	s.Root.Px = float32(v.W / 2)
 	s.Root.Py = float32(v.H / 2)
-	s.Root.FillC(0xffffffff)
+	s.Root.FillC(0x00000000)
+	s.Root.ZoomBase = 1
 	dobID++
 	v.Stage = s
 	return
@@ -474,6 +496,7 @@ type Stage struct {
 	DurationPerTick int64
 	view            *View
 	Root            *Dob
+	logTickLast     int32
 }
 
 func (s *Stage) Play(fps int) {
@@ -484,9 +507,10 @@ func (s *Stage) Play(fps int) {
 	running := true
 	var tick int32 = 1
 	for running {
+		dobsPainted = 0
 		// wonder if performance of clear is better
-		// s.view.Renderer.SetDrawColor(0xff, 0xff, 0xff, 0xff)
-		// s.view.Renderer.Clear()
+		s.view.Renderer.SetDrawColor(0xff, 0xff, 0xff, 0xff)
+		s.view.Renderer.Clear()
 		s.Root.Tick(tick)
 		s.Root.Paint()
 		s.view.Renderer.Present()
@@ -498,6 +522,10 @@ func (s *Stage) Play(fps int) {
 			}
 		}
 		sdl.Delay(uint32(msPerFrame))
+		if int(tick-s.logTickLast) >= fps {
+			s.logTickLast = tick
+			fmt.Printf("dobs painted: %d\n", dobsPainted)
+		}
 		tick++
 	}
 }
