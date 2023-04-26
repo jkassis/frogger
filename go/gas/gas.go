@@ -76,18 +76,20 @@ func (w *Wav) Stop() {
 // Dob Display Object renders to the screen and animates
 type Dob struct {
 	BaseAn
-	D           [2]int32                    // dim
-	Px          float32                     // posX
-	Py          float32                     // posY
-	Scale       float32                     // default scale of hi-rez text and graphics
-	Stage       *Stage                      // provides access to context and renderer
-	Texture     *Tex                        // texture to render
-	TxtOutlineW int                         // outline width
-	ctx         *Dob                        // the dob to which this dob is a child
-	dobs        *maps.SliceMap[int64, *Dob] // children of this dob in the render order
-	fillC       sdl.Color                   // color to render if texture is nil
-	txtOutlineC sdl.Color                   // color of the text outline
-	zoom        float32                     // current zoom/scaling factor
+	D       [2]int32                    // dim
+	Px      float32                     // posX
+	Py      float32                     // posY
+	Scale   float32                     // default scale of hi-rez text and graphics
+	Stage   *Stage                      // provides access to context and renderer
+	Texture *Tex                        // texture to render
+	TxtOutW int                         // outline width
+	ctx     *Dob                        // the dob to which this dob is a child
+	dobs    *maps.SliceMap[int64, *Dob] // children of this dob in the render order
+	fillC   sdl.Color                   // color to render if texture is nil
+	txt     string                      // actual text rendered in this dob
+	txtFont *ttf.Font                   // text font
+	txtOutC sdl.Color                   // color of the text outline
+	zoom    float32                     // current zoom/scaling factor
 }
 
 func (d *Dob) Tick(tick int32) {
@@ -135,21 +137,41 @@ func (d *Dob) FillC(c sdl.Color) {
 
 func (d *Dob) TxtOutlineC(c sdl.Color) {
 	// TODO re-render text
-	d.txtOutlineC = c
+	d.txtOutC = c
 }
 
-func (d *Dob) Text(font *ttf.Font, t string) (err error) {
+func (d *Dob) TxtOut(outC sdl.Color, outW int) {
+	d.txtOutC = outC
+	d.TxtOutW = outW
+}
+
+func (d *Dob) TxtFill(font *ttf.Font, fillC sdl.Color, txt string) {
+	d.txtFont = font
+	d.fillC = fillC
+	d.txt = txt
+}
+
+func (d *Dob) TxtFillOut(txt string, font *ttf.Font, fillC sdl.Color, outC sdl.Color, outW int) {
+	d.txtFont = font
+	d.fillC = fillC
+	d.txt = txt
+	d.txtOutC = outC
+	d.TxtOutW = outW
+	d.TxtRender()
+}
+
+func (d *Dob) TxtRender() (err error) {
 	if d.Texture != nil && d.Texture.SDLTexture != nil {
 		d.Texture.SDLTexture.Destroy()
 	}
 	d.Texture = &Tex{}
-	if d.TxtOutlineW > 0 {
-		font.SetOutline(d.TxtOutlineW)
-		outlineSurface, _ := font.RenderUTF8Blended(t, d.txtOutlineC)
-		font.SetOutline(0)
-		fillSurface, _ := font.RenderUTF8Blended(t, d.fillC)
+	if d.TxtOutW > 0 {
+		d.txtFont.SetOutline(d.TxtOutW)
+		outlineSurface, _ := d.txtFont.RenderUTF8Blended(d.txt, d.txtOutC)
+		d.txtFont.SetOutline(0)
+		fillSurface, _ := d.txtFont.RenderUTF8Blended(d.txt, d.fillC)
 		src := &sdl.Rect{X: 0, Y: 0, W: fillSurface.W, H: fillSurface.H}
-		dst := &sdl.Rect{X: int32(d.TxtOutlineW), Y: int32(d.TxtOutlineW), W: fillSurface.W, H: fillSurface.H}
+		dst := &sdl.Rect{X: int32(d.TxtOutW), Y: int32(d.TxtOutW), W: fillSurface.W, H: fillSurface.H}
 		// fillSurface.SetBlendMode(sdl.BLENDMODE_BLEND)
 		fillSurface.Blit(src, outlineSurface, dst)
 		d.Texture.SDLTexture, _ = d.Stage.view.Renderer.CreateTextureFromSurface(outlineSurface)
@@ -158,7 +180,7 @@ func (d *Dob) Text(font *ttf.Font, t string) (err error) {
 		fillSurface.Free()
 		outlineSurface.Free()
 	} else {
-		fillSurface, _ := font.RenderUTF8Solid(t, d.fillC)
+		fillSurface, _ := d.txtFont.RenderUTF8Solid(d.txt, d.fillC)
 		d.Texture.SDLTexture, _ = d.Stage.view.Renderer.CreateTextureFromSurface(fillSurface)
 		d.D[0] = fillSurface.W
 		d.D[1] = fillSurface.H
@@ -265,8 +287,8 @@ func (a *BaseAn) AnQ() map[int64]An {
 	return a.anQ
 }
 
-// Pos just sets position
-func (a *BaseAn) Pos(x float32, y float32) *BaseAn {
+// Move sets the position
+func (a *BaseAn) Move(x float32, y float32) *BaseAn {
 	a.Dob.Px = x
 	a.Dob.Py = y
 	return a
@@ -281,8 +303,8 @@ type MoveAn struct {
 	endY   float32
 }
 
-// Move yields a MoveAn for BaseAn.Dob
-func (a *BaseAn) Move(x float32, y float32, duration time.Duration, easer Ease) *MoveAn {
+// MoveTo yields a MoveAn for BaseAn.Dob
+func (a *BaseAn) MoveTo(x float32, y float32, duration time.Duration, easer Ease) *MoveAn {
 	anID++
 	if easer == nil {
 		easer = EaseNone
@@ -303,6 +325,12 @@ func (a *MoveAn) Tick(tick int32) bool {
 	return pct == 1
 }
 
+// Zoom sets the zoom
+func (a *BaseAn) Zoom(z float32) *BaseAn {
+	a.Dob.zoom = z
+	return a
+}
+
 // ZoomAn animates the zoom factor for a dob with easing
 type ZoomAn struct {
 	BaseAn
@@ -310,8 +338,8 @@ type ZoomAn struct {
 	endZoom   float32
 }
 
-// Zoom yields a ZoomAn for BaseAn.Dob
-func (a *BaseAn) Zoom(zoom float32, duration time.Duration, easer Ease) *ZoomAn {
+// ZoomTo yields a ZoomAn for BaseAn.Dob
+func (a *BaseAn) ZoomTo(zoom float32, duration time.Duration, easer Ease) *ZoomAn {
 	anID++
 	if easer == nil {
 		easer = EaseNone

@@ -46,66 +46,77 @@ func main() {
 	intro := func() chan struct{} {
 		done := make(chan struct{})
 
+		// the order added to the canvas established the z-layer
 		bg, _ := s.Root.Spawn("img/bg.png")
-		bg.Move(400, 300, 0, nil)
-
+		heart1, _ := s.Root.Spawn("img/heart1.png")
+		heart2, _ := s.Root.Spawn("img/heart2.png")
+		heart2.Exit()
+		heart3, _ := s.Root.Spawn("img/heart3.png")
+		heart3.Exit()
 		frog, _ := s.Root.Spawn("img/frog.png")
-		frog.Scale = .05
-		logo, _ := s.Root.Spawn("")
-		logo.Scale = .1
+		credit, _ := s.Root.Spawn("")
 		title, _ := s.Root.Spawn("")
 
+		// bg
+		bg.MoveTo(400, 300, 0, nil)
+
 		// title
-		title.FillC(gas.SDLC(0x00ff00ff))
-		title.TxtOutlineC(gas.SDLC(0x333333ff))
-		title.TxtOutlineW = 4
-		title.Text(montserrat96, "Frogger")
+		title.TxtFillOut("Frogger", montserrat96, gas.SDLC(0x00ff00ff), gas.SDLC(0x333333ff), 4)
 		title.Scale = .5
-		title.Pos(800, 300).
-			Move(400, 300, 2*time.Second, gas.EaseInOutSin)
+		title.Move(800, 300).
+			MoveTo(400, 300, 2*time.Second, gas.EaseInOutSin)
 
 		// frog
+		frog.Scale = .05
 		frog.
-			Pos(0, 200).
-			Move(120, 300, 2*time.Second, gas.EaseInOutSin).
+			Move(0, 200).
+			MoveTo(120, 300, 2*time.Second, gas.EaseInOutSin).
 			Then(func(d *gas.Dob) {
 				// move and zoom
-				d.Move(300, 120, 2*time.Second, nil)
-				d.Zoom(4, 2*time.Second, nil).
+				d.MoveTo(300, 120, 2*time.Second, nil)
+				d.ZoomTo(4, 2*time.Second, nil).
 					Then(func(d *gas.Dob) {
 						// move an zoom again. note how these race to Exit
-						d.Zoom(.25, 3*time.Second, gas.EaseInOutSin).Exit()
-						d.Move(330, 280, 3*time.Second, nil)
+						d.ZoomTo(.25, 3*time.Second, gas.EaseInOutSin).Exit()
+						d.MoveTo(330, 280, 3*time.Second, nil)
 					})
 			})
 
-		// logo
-		logo.FillC(gas.SDLC(0xffff33dd))
-		logo.TxtOutlineC(gas.SDLC(0x003300dd))
-		logo.TxtOutlineW = 2
-		logo.Text(montserrat48, "jkassis ©2023")
-		logo.
-			Pos(50, 50).
-			Move(120, 300, 2*time.Second, gas.EaseInOutSin).
+		// credit
+		credit.TxtFillOut("jkassis ©2023", montserrat48, gas.SDLC(0xffff33dd), gas.SDLC(0x003300dd), 2)
+		credit.Zoom(.01)
+		credit.Move(533, 400)
+
+		// hearts
+		heart1.Scale = .1
+		heart2.Scale = .1
+		heart3.Scale = .2
+		heart1.
+			Move(0, 200).
+			MoveTo(120, 300, 2*time.Second, gas.EaseInOutSin).
+			MoveTo(533, 400, 3*time.Second, gas.EaseInOutSin).
 			Then(func(d *gas.Dob) {
-				d.Move(533, 400, 3*time.Second, gas.EaseInOutSin).
-					Zoom(10, 3*time.Second, gas.EaseInOutSin).
-					Then(func(d *gas.Dob) {
-						// note how we trigger this title anim when the logo anim completes
-						title.
-							Zoom(2, 200*time.Millisecond, nil).
-							Zoom(1, 400*time.Millisecond, nil).
-							Then(func(d *gas.Dob) {
-								close(done)
-							})
-					})
+				credit.
+					ZoomTo(1, 3*time.Second, gas.EaseInOutSin).Then(func(d *gas.Dob) {
+					// note how we trigger this title anim when the logo anim completes
+					title.
+						ZoomTo(2, 200*time.Millisecond, nil).
+						ZoomTo(1, 400*time.Millisecond, nil).
+						Then(func(d *gas.Dob) {
+							close(done)
+						})
+				})
 			})
-		logo.Emit(logo, 20, 500*time.Millisecond, 3*time.Second, s.Root, gas.EaseInOutSinInv,
+
+		heart1.Emit(heart1, 20, 500*time.Millisecond, 3*time.Second, nil, gas.EaseInOutSinInv,
 			func(d *gas.Dob) {
+				if rand.Intn(100) < 25 {
+					d.Texture = heart3.Texture
+				}
 				x := float32(view.W) * rand.Float32()
 				y := float32(view.H) * rand.Float32()
 				dur := time.Second + time.Duration(rand.Float32()*float32(3*time.Second))
-				d.Move(x, y, dur, nil).Exit()
+				d.MoveTo(x, y, dur, nil).Exit()
 			})
 
 		return done
