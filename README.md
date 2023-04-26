@@ -32,15 +32,15 @@ Known Issues
 -----------------------
 
 GoLang
-* Datatypes
+* Datatypes  
   excessive casting and use of int64 creating a large memory footprint for display objects.
-* Error Handling
+* Error Handling  
   The SDL layer surfaces many errors which GAS mostly discards. This is one of the reasons gas is not production ready.
-* Public API
+* Public API  
   Little thought into what fields should allow public access
-* Recycling
+* Recycling  
   This systems should recycle dobs to avoid garbage collection. Currently no pooling of textures, dobs, etc.
-* z-layering
+* z-layering  
   Controlled by OrderedMaps, which I have not benchmarked, tested thoroughly.
 
 
