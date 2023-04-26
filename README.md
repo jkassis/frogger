@@ -39,7 +39,7 @@ GoLang
 
 
 ## License
-No public license to use GAS, the game animation system. All rights reserved ©2013 Jeremy Kassis.
+No public license to use GAS, the game animation system. All rights reserved ©2023 Jeremy Kassis.
 
 Private licenses available on request.
 

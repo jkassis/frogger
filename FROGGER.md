@@ -163,7 +163,7 @@ Where possible, the simulation loop polls for async io keyboard events.
 Where not possible, the simulation loop runs at 1khz to gather input and ticks at the simulation frequency.
 
 ## License
-No public license to use GAS, the game animation system. All rights reserved ©2013 Jeremy Kassis.
+No public license to use GAS, the game animation system. All rights reserved ©2023 Jeremy Kassis.
 
 Private licenses available on request.
 
