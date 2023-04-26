@@ -54,6 +54,10 @@ GoLang
   This systems should recycle dobs to avoid garbage collection. Currently no pooling of textures, dobs, etc.
 * z-layering  
   Controlled by OrderedMaps, which I have not benchmarked, tested thoroughly.
+* fn calls
+  Ans implement an abstract interface so that Dobs can run generic Ans. This means we have to access properties through accessors. Should be possible to fix this with generics and inverting the embed. Instead of embedding BaseAnim in each An, we would embed the specific An inside base.
+
+  It should also be possible with this fix to init startTick for each An before the first invocation of the start tick to remove some of the boilerplate code from the An.Tick fns.
 
 
 ## License

@@ -32,14 +32,13 @@ func main() {
 	CHECK(err)
 	defer view.Destroy()
 
-	s, err := view.MakeStage()
-	s.BGColor = sdl.Color{R: 0x01, G: 0xb3, B: 0x35, A: 0xff}
-	// s.BGColor = sdl.Color{R: 196, G: 120, B: 161, A: 0xff}
-
+	s, err := gas.MakeStage(view)
 	CHECK(err)
+	s.BGColor = sdl.Color{R: 0x01, G: 0xb3, B: 0x35, A: 0xff}
 
-	montserrat96, _ := view.FontLoad("fonts/Montserrat-Regular.ttf", 96)
-	montserrat48, _ := view.FontLoad("fonts/Montserrat-Regular.ttf", 48)
+	montserrat96, err := view.FontLoad("fonts/Montserrat-Regular.ttf", 96)
+	CHECK(err)
+	montserrat48, err := view.FontLoad("fonts/Montserrat-Regular.ttf", 48)
 	CHECK(err)
 
 	intro := func() chan struct{} {
@@ -57,10 +56,10 @@ func main() {
 		title, _ := s.Root.Spawn("")
 
 		// bg
-		bg.MoveTo(400, 300, 0, nil)
+		bg.Move(400, 300)
 
 		// title
-		title.TxtFillOut("Frogger", montserrat96, gas.SDLC(0x00ff00ff), gas.SDLC(0x333333ff), 4)
+		title.TxtFillOut("Frogger", gas.SDLC(0x00ff00ff), montserrat96, 4, gas.SDLC(0x333333ff))
 		title.Scale = .5
 		title.Move(800, 300).
 			MoveTo(400, 300, 2*time.Second, gas.EaseInOutSin)
@@ -82,7 +81,7 @@ func main() {
 			})
 
 		// credit
-		credit.TxtFillOut("jkassis ©2023", montserrat48, gas.SDLC(0xffff33dd), gas.SDLC(0x003300dd), 2)
+		credit.TxtFillOut("jkassis ©2023", gas.SDLC(0xffff33dd), montserrat48, 2, gas.SDLC(0x003300dd))
 		credit.Zoom(.01)
 		credit.Move(533, 400)
 
@@ -127,6 +126,7 @@ func main() {
 			<-intro()
 			time.Sleep(time.Second)
 			s.Root.DobsClear()
+			s.Root.AnSetClear()
 		}
 	}()
 
