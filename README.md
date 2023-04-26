@@ -2,7 +2,7 @@ GAS: Game Animation System
 ==========================
 The game animation system (GAS) animates objects for interactive media of all sorts including video games and other motion graphics.
 
-I intend to translate GAS into multiple languages as a learning exercise.  Right now, only GoLang is provided.
+I intend to translate GAS into multiple languages as a learning exercise.  Right now, I only provide GoLang.
 
 I would not recommend GAS herein for production. Nevertheless, this repo can serve as a good place to start and extend. Custom animation systems can often do more with less, so you might want to experiment.
 
