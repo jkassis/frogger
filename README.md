@@ -10,9 +10,22 @@ GAS herein is not production ready. Nevertheless, it is a place to start and ext
 
 Documentation
 -------------
-No formal documentation other than comments, source code, and the example Frogger application.
+No formal documentation other than comments, source code, and the example Frogger Game Welcome Screen.
 
-The API is mostly self-explanatory, though inspection of the example Frogger app will yield the most rapid understanding.
+The API is mostly self-explanatory, though inspection of the example Frogger anim code will yield the most rapid understanding.
+
+
+Style
+-------------
+The API is deliberately terse and intended to produce smooth reading animation sequence code. Normally, I prefer fully spelled out variables that emphasize data hierarchies and fn names in object-verb order. eg. orderItemPut(item: Item). Think "dot-notation" without the dots.
+
+I feel this strategy helps...
+  * control entropy since I only need to "think" in one order (dot-order).
+  * improve maintainability... because remembering the abbreviation over time becomes difficult.
+
+I like to avoid use of the shift key so snake_case and PascalCase are out for me. Kebab-case isn't bad, but I prefer camelCase to keep things tight.
+
+That said, I'm flexible to whatever the team chooses and prefer opinionated languages like GoLang that strictly enforce style.
 
 
 Known Issues
