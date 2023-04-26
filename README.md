@@ -17,7 +17,7 @@ The API is mostly self-explanatory, though inspection of the example Frogger ani
 
 Installation
 ------------
-Pre-Requisites:
+Pre-Requisites:  
 See https://github.com/veandco/go-sdl2
 
 Code:
