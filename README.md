@@ -15,6 +15,18 @@ No formal documentation other than comments, source code, and the example Frogge
 The API is mostly self-explanatory, though inspection of the example Frogger anim code will yield the most rapid understanding.
 
 
+Installation
+------------
+Pre-Requisites:
+See https://github.com/veandco/go-sdl2
+
+Code:
+```
+git clone https://github.com/jkassis/gas
+cd gas/go
+go run main.go
+```
+
 Style
 -------------
 The API is deliberately terse and intended to produce smooth reading animation sequence code. Normally, I prefer fully spelled out variables that emphasize data hierarchies and fn names in object-verb order. eg. orderItemPut(item: Item). Think "dot-notation" without the dots.
