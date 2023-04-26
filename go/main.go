@@ -43,7 +43,9 @@ func main() {
 	montserrat48, _ := view.FontLoad("fonts/Montserrat-Regular.ttf", 48)
 	CHECK(err)
 
-	go func() {
+	intro := func() chan struct{} {
+		done := make(chan struct{})
+
 		bg, _ := s.Root.Spawn("img/bg.png")
 		bg.Move(400, 300, 0, nil)
 
@@ -89,9 +91,13 @@ func main() {
 				d.Move(533, 400, 3*time.Second, gas.EaseInOutSin).
 					Zoom(10, 3*time.Second, gas.EaseInOutSin).
 					Then(func(d *gas.Dob) {
-						// note how we trigger this title anim when the logo anim complete
-						title.Zoom(2, 200*time.Millisecond, nil).
-							Zoom(1, 400*time.Millisecond, nil)
+						// note how we trigger this title anim when the logo anim completes
+						title.
+							Zoom(2, 200*time.Millisecond, nil).
+							Zoom(1, 400*time.Millisecond, nil).
+							Then(func(d *gas.Dob) {
+								close(done)
+							})
 					})
 			})
 		logo.Emit(logo, 20, 500*time.Millisecond, 3*time.Second, s.Root, gas.EaseInOutSinInv,
@@ -101,6 +107,17 @@ func main() {
 				dur := time.Second + time.Duration(rand.Float32()*float32(3*time.Second))
 				d.Move(x, y, dur, nil).Exit()
 			})
+
+		return done
+	}
+
+	go func() {
+		for {
+			fmt.Println("looping...")
+			<-intro()
+			time.Sleep(time.Second)
+			s.Root.DobsClear()
+		}
 	}()
 
 	s.Play(30)

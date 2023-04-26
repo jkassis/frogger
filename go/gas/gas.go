@@ -194,6 +194,11 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 	return
 }
 
+func (d *Dob) DobsClear() {
+	d.dobs.Clear()
+	d.anQ = nil
+}
+
 func (d *Dob) DobRm(b *Dob) {
 	d.dobs.Delete(b.id)
 	b.ctx = nil
@@ -358,7 +363,6 @@ func (a *BaseAn) Emit(template *Dob, qty int, delayEach time.Duration, duration 
 }
 
 func (a *EmitAn) Tick(tick int32) bool {
-	pct, _ := a.PC(tick)
 	if a.StartTick == 0 || ((tick-a.lastEmitTick)*int32(a.Dob.Stage.DurationPerTick) > int32(a.interval)) {
 		a.lastEmitTick = tick
 
@@ -387,6 +391,7 @@ func (a *EmitAn) Tick(tick int32) bool {
 	if a.StartTick == 0 {
 		a.StartTick = tick
 	}
+	pct, _ := a.PC(tick)
 	return pct == 1
 }
 
@@ -510,6 +515,7 @@ func (v *View) TextureLoad(path string) (texture *Tex, err error) {
 			err = fmt.Errorf("could not query texture at %s: %v", path, err)
 			return nil, err
 		}
+		v.textures[path] = texture
 	}
 	return
 }
@@ -522,6 +528,7 @@ func (v *View) SoundLoad(path string) (*Wav, error) {
 			return nil, err
 		}
 		snd = &Wav{View: v, Wav: wav}
+		v.sounds[path] = snd
 	}
 	return snd, nil
 }
