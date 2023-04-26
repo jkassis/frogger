@@ -44,7 +44,7 @@ func main() {
 	CHECK(err)
 
 	go func() {
-		bg, _ := s.Root.Spawn("img/bg.webp")
+		bg, _ := s.Root.Spawn("img/bg.png")
 		bg.Move(400, 300, 0, nil)
 
 		frog, _ := s.Root.Spawn("img/frog.png")
@@ -77,7 +77,7 @@ func main() {
 		logo.FillC(0xffff33dd)
 		logo.OutlineC(0x003300dd)
 		logo.OutlineW = 2
-		logo.Text(montserrat48, "jkassis")
+		logo.Text(montserrat48, "jkassis ©2023")
 		logo.Emit(logo, 20, 500*time.Millisecond, 3*time.Second, s.Root, gas.EaseInOutSinInv, func(d *gas.Dob) {
 			x := float32(view.W) * rand.Float32()
 			y := float32(view.H) * rand.Float32()
@@ -88,13 +88,12 @@ func main() {
 			Move(50, 50, 0, nil).
 			Move(120, 300, 2*time.Second, gas.EaseInOutSin)
 
-		b.Move(600, 400, 3*time.Second, gas.EaseInOutSin).
+		b.Move(533, 400, 3*time.Second, gas.EaseInOutSin).
 			Zoom(10, 3*time.Second, gas.EaseInOutSin).
 			Then(func() {
 				title.Zoom(2, 200*time.Millisecond, nil).
 					Zoom(1, 400*time.Millisecond, nil)
 			})
-
 	}()
 
 	s.Play(30)
