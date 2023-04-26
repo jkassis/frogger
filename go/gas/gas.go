@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/goradd/maps"
 	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/mix"
 	"github.com/veandco/go-sdl2/sdl"
@@ -21,7 +22,7 @@ func Init() (err error) {
 	if err != nil {
 		return err
 	}
-	err = img.Init(img.INIT_PNG | img.INIT_JPG)
+	err = img.Init(img.INIT_PNG | img.INIT_JPG | img.INIT_WEBP)
 	if err != nil {
 		return err
 	}
@@ -81,7 +82,7 @@ type Dob struct {
 	D        [2]int32 // dim
 	Px       float32  // posX
 	Py       float32  // posY
-	spawn    map[int64]*Dob
+	spawn    *maps.SliceMap[int64, *Dob]
 	spawner  *Dob
 	Stage    *Stage
 	Texture  *Tex
@@ -90,6 +91,10 @@ type Dob struct {
 }
 
 func (d *Dob) Tick(tick int32) {
+	if d == nil {
+		fmt.Println("no")
+	}
+
 	for ID, an := range d.anQ {
 		if an.Tick(tick) {
 			delete(d.anQ, ID)
@@ -98,9 +103,13 @@ func (d *Dob) Tick(tick int32) {
 			}
 		}
 	}
-	for _, spawn := range d.spawn {
-		spawn.Tick(tick)
-	}
+	d.spawn.Range(func(id int64, spawn *Dob) bool {
+		// TODO seems like this ordered map implementation is flakey
+		if spawn != nil {
+			spawn.Tick(tick)
+		}
+		return true
+	})
 }
 
 func (d *Dob) Paint() {
@@ -113,10 +122,13 @@ func (d *Dob) Paint() {
 		d.Stage.view.Renderer.SetDrawColor(d.fillC.R, d.fillC.G, d.fillC.B, d.fillC.A)
 		d.Stage.view.Renderer.FillRect(&dst)
 	}
-
-	for _, spawn := range d.spawn {
-		spawn.Paint()
-	}
+	d.spawn.Range(func(id int64, spawn *Dob) bool {
+		// TODO seems like this ordered map implementation is flakey
+		if spawn != nil {
+			spawn.Paint()
+		}
+		return true
+	})
 }
 
 func (d *Dob) FillC(c uint32) {
@@ -187,18 +199,18 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 
 	dob.spawner = d
 	if d.spawn == nil {
-		d.spawn = make(map[int64]*Dob, 0)
+		d.spawn = &maps.SliceMap[int64, *Dob]{}
 	}
-	d.spawn[dob.id] = dob
+	d.spawn.Set(dob.id, dob)
 	return
 }
 
 func (a *Dob) SpawnRm(b *Dob) {
-	delete(a.spawn, b.id)
+	a.spawn.Delete(b.id)
 }
 
 func (a *Dob) SpawnAdd(b *Dob) {
-	a.spawn[b.id] = b
+	a.spawn.Set(b.id, b)
 }
 
 // An animates
@@ -223,7 +235,7 @@ func (a *BaseAn) ID() int64 {
 }
 
 func (a *BaseAn) add(b An) An {
-	if len(a.anQ) == 0 {
+	if a.anQ == nil {
 		a.anQ = make(map[int64]An, 0)
 	}
 	a.anQ[b.ID()] = b
@@ -358,8 +370,8 @@ func (a *EmitAn) Tick(tick int32) bool {
 			b.StartTick = 0
 
 			if a.target != nil {
-				delete(c.spawn, b.id)
-				a.target.spawn[b.id] = b
+				c.spawn.Delete(b.id)
+				a.target.spawn.Set(b.id, b)
 				b.spawner = a.target
 			}
 			a.handler(b)
@@ -400,7 +412,7 @@ func (a *BaseAn) End() *EndAn {
 }
 
 func (a *EndAn) Tick(tick int32) bool {
-	delete(a.Dob.spawner.spawn, a.Dob.id)
+	a.Dob.spawner.spawn.Delete(a.Dob.id)
 	a.Dob.spawner = nil
 	return true
 }
@@ -482,7 +494,7 @@ func (v *View) FontLoad(path string, size int) (font *ttf.Font, err error) {
 	var ok bool
 	font, ok = v.fonts[path+string(size)]
 	if !ok {
-		font, err = ttf.OpenFont(path, 48)
+		font, err = ttf.OpenFont(path, size)
 		if err != nil {
 			return
 		}
@@ -495,6 +507,7 @@ func (v *View) FontLoad(path string, size int) (font *ttf.Font, err error) {
 type Stage struct {
 	DurationPerTick int64
 	view            *View
+	BGColor         sdl.Color
 	Root            *Dob
 	logTickLast     int32
 }
@@ -508,8 +521,7 @@ func (s *Stage) Play(fps int) {
 	var tick int32 = 1
 	for running {
 		dobsPainted = 0
-		// wonder if performance of clear is better
-		s.view.Renderer.SetDrawColor(0xff, 0xff, 0xff, 0xff)
+		s.view.Renderer.SetDrawColor(s.BGColor.R, s.BGColor.G, s.BGColor.B, s.BGColor.A)
 		s.view.Renderer.Clear()
 		s.Root.Tick(tick)
 		s.Root.Paint()

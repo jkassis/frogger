@@ -1,6 +1,9 @@
 # github.com/chewxy/math32 v1.10.1
 ## explicit; go 1.13
 github.com/chewxy/math32
+# github.com/goradd/maps v0.1.4
+## explicit; go 1.18
+github.com/goradd/maps
 # github.com/veandco/go-sdl2 v0.4.34
 ## explicit; go 1.15
 github.com/veandco/go-sdl2/_libs

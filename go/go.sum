@@ -1,4 +1,10 @@
 github.com/chewxy/math32 v1.10.1 h1:LFpeY0SLJXeaiej/eIp2L40VYfscTvKh/FSEZ68uMkU=
 github.com/chewxy/math32 v1.10.1/go.mod h1:dOB2rcuFrCn6UHrze36WSLVPKtzPMRAQvBvUwkSsLqs=
+github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
+github.com/goradd/maps v0.1.4 h1:jVEnv2PQMa3CLNJlN083lbxt8r7nsIGM21mN6EoB7Xs=
+github.com/goradd/maps v0.1.4/go.mod h1:DHeKgAkulck7clgw9IWWMMO3NqDvE7l0wRwZVySeuoE=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/stretchr/testify v1.7.1 h1:5TQK59W5E3v0r2duFAb7P95B6hEeOyEnHRa8MjYSMTY=
 github.com/veandco/go-sdl2 v0.4.34 h1:dqbUhV/SSJ35grdYTLv3iVxtO1NzNmgzMV//hyCyypY=
 github.com/veandco/go-sdl2 v0.4.34/go.mod h1:OROqMhHD43nT4/i9crJukyVecjPNYYuCofep6SNiAjY=
+gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie2QXMNeKRTHCNY2nXvo=
