@@ -76,25 +76,21 @@ func (w *Wav) Stop() {
 // Dob Display Object renders to the screen and animates
 type Dob struct {
 	BaseAn
-	fillC    sdl.Color // color
-	outlineC sdl.Color
-	OutlineW int
-	D        [2]int32 // dim
-	Px       float32  // posX
-	Py       float32  // posY
-	spawn    *maps.SliceMap[int64, *Dob]
-	spawner  *Dob
-	Stage    *Stage
-	Texture  *Tex
-	zoom     float32
-	ZoomBase float32
+	D           [2]int32                    // dim
+	Px          float32                     // posX
+	Py          float32                     // posY
+	Scale       float32                     // default scale of hi-rez text and graphics
+	Stage       *Stage                      // provides access to context and renderer
+	Texture     *Tex                        // texture to render
+	TxtOutlineW int                         // outline width
+	ctx         *Dob                        // the dob to which this dob is a child
+	dobs        *maps.SliceMap[int64, *Dob] // children of this dob in the render order
+	fillC       sdl.Color                   // color to render if texture is nil
+	txtOutlineC sdl.Color                   // color of the text outline
+	zoom        float32                     // current zoom/scaling factor
 }
 
 func (d *Dob) Tick(tick int32) {
-	if d == nil {
-		fmt.Println("no")
-	}
-
 	for ID, an := range d.anQ {
 		if an.Tick(tick) {
 			delete(d.anQ, ID)
@@ -103,10 +99,11 @@ func (d *Dob) Tick(tick int32) {
 			}
 		}
 	}
-	d.spawn.Range(func(id int64, spawn *Dob) bool {
-		// TODO seems like this ordered map implementation is flakey
-		if spawn != nil {
-			spawn.Tick(tick)
+
+	d.dobs.Range(func(id int64, d *Dob) bool {
+		// we have to do this check to support racing anims
+		if d != nil {
+			d.Tick(tick)
 		}
 		return true
 	})
@@ -114,7 +111,7 @@ func (d *Dob) Tick(tick int32) {
 
 func (d *Dob) Paint() {
 	dobsPainted++
-	dst := sdl.Rect{X: int32(d.Px - d.ZoomBase*d.zoom*float32(d.D[0])/2), Y: int32(d.Py - d.ZoomBase*d.zoom*float32(d.D[1])/2), W: int32(d.ZoomBase * d.zoom * float32(d.D[0])), H: int32(d.ZoomBase * d.zoom * float32(d.D[1]))}
+	dst := sdl.Rect{X: int32(d.Px - d.Scale*d.zoom*float32(d.D[0])/2), Y: int32(d.Py - d.Scale*d.zoom*float32(d.D[1])/2), W: int32(d.Scale * d.zoom * float32(d.D[0])), H: int32(d.Scale * d.zoom * float32(d.D[1]))}
 	if d.Texture != nil {
 		src := sdl.Rect{X: 0, Y: 0, W: d.D[0], H: d.D[1]}
 		d.Stage.view.Renderer.Copy(d.Texture.SDLTexture, &src, &dst)
@@ -122,31 +119,23 @@ func (d *Dob) Paint() {
 		d.Stage.view.Renderer.SetDrawColor(d.fillC.R, d.fillC.G, d.fillC.B, d.fillC.A)
 		d.Stage.view.Renderer.FillRect(&dst)
 	}
-	d.spawn.Range(func(id int64, spawn *Dob) bool {
-		// TODO seems like this ordered map implementation is flakey
-		if spawn != nil {
-			spawn.Paint()
+	d.dobs.Range(func(id int64, d *Dob) bool {
+		// we have to do this check to support racing anims
+		if d != nil {
+			d.Paint()
 		}
 		return true
 	})
 }
 
-func (d *Dob) FillC(c uint32) {
-	d.fillC = sdl.Color{
-		R: uint8(c >> 24),
-		G: uint8(c << 8 >> 24),
-		B: uint8(c << 16 >> 24),
-		A: uint8(c << 24 >> 24),
-	}
+func (d *Dob) FillC(c sdl.Color) {
+	// TODO re-render text
+	d.fillC = c
 }
 
-func (d *Dob) OutlineC(c uint32) {
-	d.outlineC = sdl.Color{
-		R: uint8(c >> 24),
-		G: uint8(c << 8 >> 24),
-		B: uint8(c << 16 >> 24),
-		A: uint8(c << 24 >> 24),
-	}
+func (d *Dob) TxtOutlineC(c sdl.Color) {
+	// TODO re-render text
+	d.txtOutlineC = c
 }
 
 func (d *Dob) Text(font *ttf.Font, t string) (err error) {
@@ -154,13 +143,13 @@ func (d *Dob) Text(font *ttf.Font, t string) (err error) {
 		d.Texture.SDLTexture.Destroy()
 	}
 	d.Texture = &Tex{}
-	if d.OutlineW > 0 {
-		font.SetOutline(d.OutlineW)
-		outlineSurface, _ := font.RenderUTF8Blended(t, d.outlineC)
+	if d.TxtOutlineW > 0 {
+		font.SetOutline(d.TxtOutlineW)
+		outlineSurface, _ := font.RenderUTF8Blended(t, d.txtOutlineC)
 		font.SetOutline(0)
 		fillSurface, _ := font.RenderUTF8Blended(t, d.fillC)
 		src := &sdl.Rect{X: 0, Y: 0, W: fillSurface.W, H: fillSurface.H}
-		dst := &sdl.Rect{X: int32(d.OutlineW), Y: int32(d.OutlineW), W: fillSurface.W, H: fillSurface.H}
+		dst := &sdl.Rect{X: int32(d.TxtOutlineW), Y: int32(d.TxtOutlineW), W: fillSurface.W, H: fillSurface.H}
 		// fillSurface.SetBlendMode(sdl.BLENDMODE_BLEND)
 		fillSurface.Blit(src, outlineSurface, dst)
 		d.Texture.SDLTexture, _ = d.Stage.view.Renderer.CreateTextureFromSurface(outlineSurface)
@@ -178,14 +167,18 @@ func (d *Dob) Text(font *ttf.Font, t string) (err error) {
 	return
 }
 
+// Spawn yields a new dob with d as its ctx. This implies a parentt-child
+// relationship, which currently only affects render order. In future versions,
+// dobs might use their ctx dobs as a reference frame for relative positioning,
+// zooming, etc.
 func (d *Dob) Spawn(path string) (dob *Dob, err error) {
-	dob = &Dob{
-		BaseAn:   BaseAn{id: dobID},
-		Stage:    d.Stage,
-		zoom:     1,
-		ZoomBase: d.ZoomBase,
-	}
 	dobID++
+	dob = &Dob{
+		BaseAn: BaseAn{id: dobID},
+		Stage:  d.Stage,
+		zoom:   1,
+		Scale:  d.Scale,
+	}
 	if path == "" {
 		dob.D[0] = 2
 		dob.D[1] = 2
@@ -197,20 +190,21 @@ func (d *Dob) Spawn(path string) (dob *Dob, err error) {
 	}
 	dob.BaseAn.Dob = dob
 
-	dob.spawner = d
-	if d.spawn == nil {
-		d.spawn = &maps.SliceMap[int64, *Dob]{}
-	}
-	d.spawn.Set(dob.id, dob)
+	d.DobAdd(dob)
 	return
 }
 
-func (a *Dob) SpawnRm(b *Dob) {
-	a.spawn.Delete(b.id)
+func (d *Dob) DobRm(b *Dob) {
+	d.dobs.Delete(b.id)
+	b.ctx = nil
 }
 
-func (a *Dob) SpawnAdd(b *Dob) {
-	a.spawn.Set(b.id, b)
+func (d *Dob) DobAdd(b *Dob) {
+	if d.dobs == nil {
+		d.dobs = &maps.SliceMap[int64, *Dob]{}
+	}
+	d.dobs.Set(b.id, b)
+	b.ctx = d
 }
 
 // An animates
@@ -247,7 +241,7 @@ func (a *BaseAn) Tick(tick int32) bool {
 	return false
 }
 
-// PC returns percent complete
+// PC calculates raw and eased percent complete
 func (a *BaseAn) PC(tick int32) (raw float32, eased float32) {
 	var pct float32
 	if a.Duration == 0 {
@@ -261,26 +255,35 @@ func (a *BaseAn) PC(tick int32) (raw float32, eased float32) {
 	return pct, a.Easer(pct)
 }
 
+// AnQ gets the anQ
 func (a *BaseAn) AnQ() map[int64]An {
 	return a.anQ
 }
 
-// Move Anim
-func (a *BaseAn) Move(x float32, y float32, duration time.Duration, easer Ease) *MoveAn {
-	if easer == nil {
-		easer = EaseNone
-	}
-	b := &MoveAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: int64(duration), Easer: easer}, endX: x, endY: y}
-	anID++
-	return a.add(b).(*MoveAn)
+// Pos just sets position
+func (a *BaseAn) Pos(x float32, y float32) *BaseAn {
+	a.Dob.Px = x
+	a.Dob.Py = y
+	return a
 }
 
+// MoveAn moves a dob to a point over time with easing
 type MoveAn struct {
 	BaseAn
 	deltaX float32
 	deltaY float32
 	endX   float32
 	endY   float32
+}
+
+// Move yields a MoveAn for BaseAn.Dob
+func (a *BaseAn) Move(x float32, y float32, duration time.Duration, easer Ease) *MoveAn {
+	anID++
+	if easer == nil {
+		easer = EaseNone
+	}
+	b := &MoveAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: int64(duration), Easer: easer}, endX: x, endY: y}
+	return a.add(b).(*MoveAn)
 }
 
 func (a *MoveAn) Tick(tick int32) bool {
@@ -295,19 +298,20 @@ func (a *MoveAn) Tick(tick int32) bool {
 	return pct == 1
 }
 
-// Zoom Anim
+// ZoomAn animates the zoom factor for a dob with easing
 type ZoomAn struct {
 	BaseAn
 	deltaZoom float32
 	endZoom   float32
 }
 
+// Zoom yields a ZoomAn for BaseAn.Dob
 func (a *BaseAn) Zoom(zoom float32, duration time.Duration, easer Ease) *ZoomAn {
+	anID++
 	if easer == nil {
 		easer = EaseNone
 	}
 	b := &ZoomAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: int64(duration), Easer: easer}, endZoom: zoom}
-	anID++
 	return a.add(b).(*ZoomAn)
 }
 
@@ -323,10 +327,12 @@ func (a *ZoomAn) Tick(tick int32) bool {
 	return pct == 1
 }
 
-// Spawn Anim
+// EmitAn spawns qty dobs at the current dobs location every interval for a duration
+// the lower limit of interval is the frame rate of the stage
+// EmitAn calls "then" for each emitted Dob. Use "then" to start Ans on emitted dobs.
 type EmitAn struct {
 	BaseAn
-	handler      func(*Dob)
+	Then         func(*Dob)
 	interval     time.Duration
 	lastEmitTick int32
 	qty          int
@@ -334,7 +340,9 @@ type EmitAn struct {
 	template     *Dob
 }
 
+// Emit yields an EmitAn for BaseAn.Dob
 func (a *BaseAn) Emit(template *Dob, qty int, delayEach time.Duration, duration time.Duration, target *Dob, easer Ease, handler func(*Dob)) *EmitAn {
+	anID++
 	if easer == nil {
 		easer = EaseNone
 	}
@@ -344,9 +352,8 @@ func (a *BaseAn) Emit(template *Dob, qty int, delayEach time.Duration, duration 
 		template: template,
 		interval: delayEach,
 		target:   target,
-		handler:  handler,
+		Then:     handler,
 	}
-	anID++
 	return a.add(b).(*EmitAn)
 }
 
@@ -370,11 +377,11 @@ func (a *EmitAn) Tick(tick int32) bool {
 			b.StartTick = 0
 
 			if a.target != nil {
-				c.spawn.Delete(b.id)
-				a.target.spawn.Set(b.id, b)
-				b.spawner = a.target
+				c.dobs.Delete(b.id)
+				a.target.dobs.Set(b.id, b)
+				b.ctx = a.target
 			}
-			a.handler(b)
+			a.Then(b)
 		}
 	}
 	if a.StartTick == 0 {
@@ -383,37 +390,66 @@ func (a *EmitAn) Tick(tick int32) bool {
 	return pct == 1
 }
 
-// ThenAn
+// ThenAn calls the "then" function when all Ans of the preceding chain complete
+// It completes immediately and does not wait.
 type ThenAn struct {
 	BaseAn
-	fn func()
+	then func(*Dob)
 }
 
-func (a *BaseAn) Then(fn func()) *ThenAn {
-	b := &ThenAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: 0, Easer: nil}, fn: fn}
+// Then yields a ThenAn for BaseAn.Dob
+func (a *BaseAn) Then(fn func(*Dob)) *ThenAn {
 	anID++
+	b := &ThenAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: 0, Easer: nil}, then: fn}
 	return a.add(b).(*ThenAn)
 }
 
 func (a *ThenAn) Tick(tick int32) bool {
-	a.fn()
+	a.then(a.Dob)
 	return true
 }
 
-// EndAn
-type EndAn struct {
+// ThenWaitAn calls the "then" function when all Ans of the preceding chain complete
+// The "then" function should return an unbuffered channel and close it when then should complete.
+// This allows the then function to pause the main chain while it completes.
+// Note that this requires use of a goroutine, so watch your resource utilization if you
+// emit lots of particles that rely on this.
+type ThenWaitAn struct {
+	BaseAn
+	then     func(*Dob) chan struct{}
+	complete bool
+}
+
+// ThenWait yields a ThenWaitAn for BaseAn.Dob
+func (a *BaseAn) ThenWait(fn func(*Dob) chan struct{}) *ThenAn {
+	anID++
+	b := &ThenWaitAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: 0, Easer: nil}, then: fn}
+	return a.add(b).(*ThenAn)
+}
+
+func (a *ThenWaitAn) Tick(tick int32) bool {
+	go func() {
+		<-a.then(a.Dob)
+		a.complete = true
+	}()
+	return a.complete
+}
+
+// ExitAn removes a dob from the screen / stage
+// if the spawning code has no reference, it will get garbage collected
+type ExitAn struct {
 	BaseAn
 }
 
-func (a *BaseAn) End() *EndAn {
-	b := &EndAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: 0, Easer: nil}}
+// Exit yields an ExitAn for BaseAn.Dob
+func (a *BaseAn) Exit() *ExitAn {
 	anID++
-	return a.add(b).(*EndAn)
+	b := &ExitAn{BaseAn: BaseAn{id: anID, Dob: a.Dob, anQ: nil, Duration: 0, Easer: nil}}
+	return a.add(b).(*ExitAn)
 }
 
-func (a *EndAn) Tick(tick int32) bool {
-	a.Dob.spawner.spawn.Delete(a.Dob.id)
-	a.Dob.spawner = nil
+func (a *ExitAn) Tick(tick int32) bool {
+	a.Dob.ctx.DobRm(a.Dob)
 	return true
 }
 
@@ -425,8 +461,8 @@ type View struct {
 	Title    string
 	View     *sdl.Window
 	W        int32
-	sounds   map[string]*Wav
 	fonts    map[string]*ttf.Font
+	sounds   map[string]*Wav
 	textures map[string]*Tex
 }
 
@@ -450,8 +486,8 @@ func (v *View) MakeStage() (s *Stage, err error) {
 	s.Root.D[1] = v.H
 	s.Root.Px = float32(v.W / 2)
 	s.Root.Py = float32(v.H / 2)
-	s.Root.FillC(0x00000000)
-	s.Root.ZoomBase = 1
+	s.Root.FillC(SDLC(0x00000000))
+	s.Root.Scale = 1
 	dobID++
 	v.Stage = s
 	return
@@ -491,14 +527,15 @@ func (v *View) SoundLoad(path string) (*Wav, error) {
 }
 
 func (v *View) FontLoad(path string, size int) (font *ttf.Font, err error) {
+	key := fmt.Sprintf("%s-%d", path, size)
 	var ok bool
-	font, ok = v.fonts[path+string(size)]
+	font, ok = v.fonts[key]
 	if !ok {
 		font, err = ttf.OpenFont(path, size)
 		if err != nil {
 			return
 		}
-		v.fonts[path+string(size)] = font
+		v.fonts[key] = font
 	}
 	return font, nil
 }
@@ -539,5 +576,14 @@ func (s *Stage) Play(fps int) {
 			fmt.Printf("dobs painted: %d\n", dobsPainted)
 		}
 		tick++
+	}
+}
+
+func SDLC(c uint32) sdl.Color {
+	return sdl.Color{
+		R: uint8(c >> 24),
+		G: uint8(c << 8 >> 24),
+		B: uint8(c << 16 >> 24),
+		A: uint8(c << 24 >> 24),
 	}
 }

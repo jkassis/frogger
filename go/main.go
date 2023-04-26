@@ -48,51 +48,58 @@ func main() {
 		bg.Move(400, 300, 0, nil)
 
 		frog, _ := s.Root.Spawn("img/frog.png")
-		frog.ZoomBase = .05
+		frog.Scale = .05
 		logo, _ := s.Root.Spawn("")
-		logo.ZoomBase = .1
+		logo.Scale = .1
 		title, _ := s.Root.Spawn("")
 
 		// title
-		title.FillC(0x00ff00ff)
-		title.OutlineC(0x333333ff)
-		title.OutlineW = 4
+		title.FillC(gas.SDLC(0x00ff00ff))
+		title.TxtOutlineC(gas.SDLC(0x333333ff))
+		title.TxtOutlineW = 4
 		title.Text(montserrat96, "Frogger")
-		title.ZoomBase = .5
-		title.Move(800, 300, 0, nil)
-		title.Move(400, 300, 2*time.Second, gas.EaseInOutSin)
+		title.Scale = .5
+		title.Pos(800, 300).
+			Move(400, 300, 2*time.Second, gas.EaseInOutSin)
 
-		// frogA
-		frogA := frog.
-			Move(0, 200, 0, nil).
-			Move(120, 300, 2*time.Second, gas.EaseInOutSin)
-
-		frogA.Move(300, 120, 2*time.Second, nil)
-		frogB := frogA.Zoom(4, 2*time.Second, nil)
-		frogB.Zoom(.25, 3*time.Second, gas.EaseInOutSin).
-			End()
-		frogB.Move(330, 280, 3*time.Second, nil)
+		// frog
+		frog.
+			Pos(0, 200).
+			Move(120, 300, 2*time.Second, gas.EaseInOutSin).
+			Then(func(d *gas.Dob) {
+				// move and zoom
+				d.Move(300, 120, 2*time.Second, nil)
+				d.Zoom(4, 2*time.Second, nil).
+					Then(func(d *gas.Dob) {
+						// move an zoom again. note how these race to Exit
+						d.Zoom(.25, 3*time.Second, gas.EaseInOutSin).Exit()
+						d.Move(330, 280, 3*time.Second, nil)
+					})
+			})
 
 		// logo
-		logo.FillC(0xffff33dd)
-		logo.OutlineC(0x003300dd)
-		logo.OutlineW = 2
+		logo.FillC(gas.SDLC(0xffff33dd))
+		logo.TxtOutlineC(gas.SDLC(0x003300dd))
+		logo.TxtOutlineW = 2
 		logo.Text(montserrat48, "jkassis ©2023")
-		logo.Emit(logo, 20, 500*time.Millisecond, 3*time.Second, s.Root, gas.EaseInOutSinInv, func(d *gas.Dob) {
-			x := float32(view.W) * rand.Float32()
-			y := float32(view.H) * rand.Float32()
-			dur := time.Second + time.Duration(rand.Float32()*float32(3*time.Second))
-			d.Move(x, y, dur, nil).End()
-		})
-		b := logo.
-			Move(50, 50, 0, nil).
-			Move(120, 300, 2*time.Second, gas.EaseInOutSin)
-
-		b.Move(533, 400, 3*time.Second, gas.EaseInOutSin).
-			Zoom(10, 3*time.Second, gas.EaseInOutSin).
-			Then(func() {
-				title.Zoom(2, 200*time.Millisecond, nil).
-					Zoom(1, 400*time.Millisecond, nil)
+		logo.
+			Pos(50, 50).
+			Move(120, 300, 2*time.Second, gas.EaseInOutSin).
+			Then(func(d *gas.Dob) {
+				d.Move(533, 400, 3*time.Second, gas.EaseInOutSin).
+					Zoom(10, 3*time.Second, gas.EaseInOutSin).
+					Then(func(d *gas.Dob) {
+						// note how we trigger this title anim when the logo anim complete
+						title.Zoom(2, 200*time.Millisecond, nil).
+							Zoom(1, 400*time.Millisecond, nil)
+					})
+			})
+		logo.Emit(logo, 20, 500*time.Millisecond, 3*time.Second, s.Root, gas.EaseInOutSinInv,
+			func(d *gas.Dob) {
+				x := float32(view.W) * rand.Float32()
+				y := float32(view.H) * rand.Float32()
+				dur := time.Second + time.Duration(rand.Float32()*float32(3*time.Second))
+				d.Move(x, y, dur, nil).Exit()
 			})
 	}()
 
