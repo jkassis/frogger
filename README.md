@@ -12,7 +12,7 @@ Documentation
 -------------
 No formal documentation other than comments, source code, and the example Frogger Welcome Screen.
 
-The API mostly explains itself, though inspection of the example Frogger anim code will yield the most rapid understanding.
+The API mostly explains itself, though inspection of the example code will yield the most rapid understanding.
 
 
 Installation
