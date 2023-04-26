@@ -1,5 +1,4 @@
 // Author: Jeremy Kassis (jkassis@gmail.com).
-// Public domain software.
 //
 // A frogger game.
 
