@@ -10,7 +10,7 @@ I would not recommend GAS herein for production. Nevertheless, this repo can ser
 
 Documentation
 -------------
-No formal documentation other than comments, source code, and the example Frogger Game Welcome Screen.
+No formal documentation other than comments, source code, and the example Frogger Welcome Screen.
 
 The API mostly explains itself, though inspection of the example Frogger anim code will yield the most rapid understanding.
 
