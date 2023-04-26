@@ -4,7 +4,7 @@ The game animation system (GAS) animates objects for interactive media of all so
 
 I intend to translate GAS into multiple languages as a learning exercise.  Right now, only GoLang is provided.
 
-I would not recommend GAS herein for production. Nevertheless, this repo can serve as a good place to start and extend. Custom animations systems can often do more with less, so you might want to experiment.
+I would not recommend GAS herein for production. Nevertheless, this repo can serve as a good place to start and extend. Custom animation systems can often do more with less, so you might want to experiment.
 
 ![GAS Stillshot](https://raw.githubusercontent.com/jkassis/gas/main/screens/frogger.intro.2.png)
 
