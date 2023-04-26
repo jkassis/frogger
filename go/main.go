@@ -21,30 +21,29 @@ func CHECK(err error) {
 	}
 }
 
-// main let's go
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	CHECK(gas.Init())
 	defer gas.Destroy()
 
-	view, err := gas.MakeView(800, 600, "Frogger")
+	v, err := gas.MakeView(800, 600, "Frogger")
 	CHECK(err)
-	defer view.Destroy()
+	defer v.Destroy()
 
-	s, err := gas.MakeStage(view)
+	s, err := gas.MakeStage(v)
 	CHECK(err)
 	s.BGColor = sdl.Color{R: 0x01, G: 0xb3, B: 0x35, A: 0xff}
 
-	bangers128, err := view.FontLoad("fonts/Bangers-Regular.ttf", 128)
+	bangers128, err := v.FontLoad("fonts/Bangers-Regular.ttf", 128)
 	CHECK(err)
-	concertOne48, err := view.FontLoad("fonts/ConcertOne-Regular.ttf", 48)
+	concertOne48, err := v.FontLoad("fonts/ConcertOne-Regular.ttf", 48)
 	CHECK(err)
 
 	intro := func() chan struct{} {
 		done := make(chan struct{})
 
-		// the order added to the canvas established the z-layer
+		// the spawn order establishs the z-order
 		bg, _ := s.Root.Spawn("img/bg.png")
 		heart1, _ := s.Root.Spawn("img/heart1.png")
 		heart2, _ := s.Root.Spawn("img/heart2.png")
@@ -61,7 +60,8 @@ func main() {
 		// title
 		title.TxtFillOut("Frogger", gas.SDLC(0x00ff00ff), bangers128, 4, gas.SDLC(0x333333ff))
 		title.Scale = .7
-		title.Move(800, 300).
+		title.
+			Move(800, 300).
 			MoveTo(400, 300, 2*time.Second, gas.EaseInOutSin)
 
 		// frog
@@ -115,8 +115,8 @@ func main() {
 				spinDuration := time.Second + gas.RandDuration(4*time.Second)
 				d.SpinTo(spinDst, spinDuration, nil)
 
-				x := float32(view.W) * rand.Float32()
-				y := float32(view.H) * rand.Float32()
+				x := float32(v.W) * rand.Float32()
+				y := float32(v.H) * rand.Float32()
 				moveDur := 2*time.Second + gas.RandDuration(4*time.Second)
 				d.MoveTo(x, y, moveDur, nil).Exit()
 			})
