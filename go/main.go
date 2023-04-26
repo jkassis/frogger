@@ -36,9 +36,9 @@ func main() {
 	CHECK(err)
 	s.BGColor = sdl.Color{R: 0x01, G: 0xb3, B: 0x35, A: 0xff}
 
-	montserrat96, err := view.FontLoad("fonts/Montserrat-Regular.ttf", 96)
+	bangers128, err := view.FontLoad("fonts/Bangers-Regular.ttf", 128)
 	CHECK(err)
-	montserrat48, err := view.FontLoad("fonts/Montserrat-Regular.ttf", 48)
+	concertOne48, err := view.FontLoad("fonts/ConcertOne-Regular.ttf", 48)
 	CHECK(err)
 
 	intro := func() chan struct{} {
@@ -59,8 +59,8 @@ func main() {
 		bg.Move(400, 300)
 
 		// title
-		title.TxtFillOut("Frogger", gas.SDLC(0x00ff00ff), montserrat96, 4, gas.SDLC(0x333333ff))
-		title.Scale = .5
+		title.TxtFillOut("Frogger", gas.SDLC(0x00ff00ff), bangers128, 4, gas.SDLC(0x333333ff))
+		title.Scale = .7
 		title.Move(800, 300).
 			MoveTo(400, 300, 2*time.Second, gas.EaseInOutSin)
 
@@ -81,7 +81,7 @@ func main() {
 			})
 
 		// credit
-		credit.TxtFillOut("jkassis ©2023", gas.SDLC(0xffff33dd), montserrat48, 2, gas.SDLC(0x003300dd))
+		credit.TxtFillOut("©2023 jkassis", gas.SDLC(0xffff33dd), concertOne48, 2, gas.SDLC(0x003300dd))
 		credit.Zoom(.01)
 		credit.Move(533, 400)
 
