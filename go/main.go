@@ -44,7 +44,7 @@ func main() {
 	intro := func() chan struct{} {
 		done := make(chan struct{})
 
-		// the spawn order establishs the z-order
+		// the spawn order establishs the z rendering order
 		bg, _ := s.Root.Spawn("img/bg.png")
 		heart1, _ := s.Root.Spawn("img/heart1.png")
 		heart2, _ := s.Root.Spawn("img/heart2.png")
@@ -66,7 +66,7 @@ func main() {
 			MoveTo(400, 300, 2*time.Second, gas.EaseInOutSin)
 
 		// frog
-		// Note use of the Promise here that flattens the anim hierarchy
+		// Note use of PromiseAn here that reduces nesting of anim code
 		// but costs some extra boilerplate and an atomic lock
 		frog.Scale = .05
 		frog.
@@ -88,9 +88,9 @@ func main() {
 		credit.Zoom(.01)
 		credit.Move(533, 400)
 
-		// hearts - note the use of
-		// Note use of Then here which increases the depth of anim hierarchy
-		// but reads cleaner with less boilerplate and performs better.
+		// hearts
+		// Note use of ThenAn here which increases nesting of anim code
+		// but requires less boilerplate and performs better.
 		heart1.Scale = .1
 		heart2.Scale = .1
 		heart3.Scale = .2
