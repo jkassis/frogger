@@ -3,6 +3,7 @@ package gas
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/goradd/maps"
@@ -612,35 +613,50 @@ func (a *ThenAn) Tick(tick int32) bool {
 	return true
 }
 
-// ThenWaitAn calls the "then" function when it Ticks.
-// The "then" function must return an unbuffered channel.
-// A ThenWaitAn starts a go routine to wait for the channel to close.
-// When the channel closes, ThenWaitAn completes.
-// This allows the animator to pause a chain to run others animations in parallel
-// or do general computation.
-//
-// Note that this requires a goroutine, so watch resource utilization if you emit
-// lots of particles that use this.
-type ThenWaitAn struct {
+// PromiseAn calls launcherFn once on the first Tick.
+// launcherFn must complete in constant time to preserve the framerate.
+// it launches computation through new Ans or goroutines
+// when those Ans or goroutines complete, they must true to the resolver
+// This releases the PromiseAn on the next tick.
+// Atomics incur some overhead, so use ThenAn when possible.
+type PromiseAn struct {
 	BaseAn
-	then     func(*Dob) chan struct{}
-	complete bool
+	launcherFn func(dob *Dob, lock *atomic.Bool)
+	resolver   atomic.Bool
 }
 
-// ThenWait yields a ThenWaitAn for BaseAn.Dob
-func (a *BaseAn) ThenWait(fn func(*Dob) chan struct{}) *ThenAn {
+// Promise yields a PromiseAn for BaseAn.Dob
+func (a *BaseAn) Promise(launcherFn func(dob *Dob, lock *atomic.Bool)) *PromiseAn {
 	anID++
-	b := &ThenWaitAn{BaseAn: BaseAn{id: anID, dob: a.dob, anSet: nil, Duration: 0, Easer: nil}, then: fn}
-	return a.AnSetAdd(b).(*ThenAn)
+	b := &PromiseAn{BaseAn: BaseAn{id: anID, dob: a.dob, anSet: nil, Duration: 0, Easer: nil}, launcherFn: launcherFn}
+	return a.AnSetAdd(b).(*PromiseAn)
 }
 
-func (a *ThenWaitAn) Tick(tick int32) bool {
-	// we wait with a goroutine so that the main animation loop can continue
-	go func() {
-		<-a.then(a.dob)
-		a.complete = true
-	}()
-	return a.complete
+func (a *PromiseAn) Tick(tick int32) bool {
+	if a.StartTick == 0 {
+		a.StartTick = tick
+		a.launcherFn(a.dob, &a.resolver)
+	}
+	return a.resolver.Load()
+}
+
+// ResolveAn writes true to an atomic.Bool
+// generally we use this to release a PromiseAn
+type ResolveAn struct {
+	BaseAn
+	resolver *atomic.Bool
+}
+
+// Resolve yields a ResolveAn for BaseAn.Dob
+func (a *BaseAn) Resolve(resolver *atomic.Bool) *ResolveAn {
+	anID++
+	b := &ResolveAn{BaseAn: BaseAn{id: anID, dob: a.dob, anSet: nil, Duration: 0, Easer: nil}, resolver: resolver}
+	return a.AnSetAdd(b).(*ResolveAn)
+}
+
+func (a *ResolveAn) Tick(tick int32) bool {
+	a.resolver.Store(true)
+	return true
 }
 
 // ExitAn removes a dob from the screen / stage ("exit stage left!")

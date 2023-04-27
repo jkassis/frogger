@@ -9,6 +9,7 @@ import (
 	"frogger/gas"
 	"math/rand"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -65,19 +66,21 @@ func main() {
 			MoveTo(400, 300, 2*time.Second, gas.EaseInOutSin)
 
 		// frog
+		// Note use of the Promise here that flattens the anim hierarchy
+		// but costs some extra boilerplate and an atomic lock
 		frog.Scale = .05
 		frog.
 			Move(0, 200).
 			MoveTo(120, 300, 2*time.Second, gas.EaseInOutSin).
-			Then(func(d *gas.Dob) {
+			Promise(func(d *gas.Dob, lock *atomic.Bool) {
 				// move and zoom
 				d.MoveTo(300, 120, 2*time.Second, nil)
-				d.ZoomTo(4, 2*time.Second, nil).
-					Then(func(d *gas.Dob) {
-						// move and zoom again. note how these race to Exit
-						d.ZoomTo(.25, 3*time.Second, gas.EaseInOutSin).Exit()
-						d.MoveTo(330, 280, 3*time.Second, nil)
-					})
+				d.ZoomTo(4, 2*time.Second, nil).Resolve(lock)
+			}).
+			Then(func(d *gas.Dob) {
+				// move and zoom again. note how these race to Exit
+				d.ZoomTo(.25, 3*time.Second, gas.EaseInOutSin).Exit()
+				d.MoveTo(330, 280, 3*time.Second, nil)
 			})
 
 		// credit
@@ -85,7 +88,9 @@ func main() {
 		credit.Zoom(.01)
 		credit.Move(533, 400)
 
-		// hearts
+		// hearts - note the use of
+		// Note use of Then here which increases the depth of anim hierarchy
+		// but reads cleaner with less boilerplate and performs better.
 		heart1.Scale = .1
 		heart2.Scale = .1
 		heart3.Scale = .2
