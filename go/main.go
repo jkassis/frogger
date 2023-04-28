@@ -1,6 +1,6 @@
 // Author: Jeremy Kassis (jkassis@gmail.com).
 //
-// A frogger game.
+// GAS: Game Animation System
 
 package main
 
