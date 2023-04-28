@@ -65,6 +65,7 @@ The Emscripten toolchain replaces calls to C SDL libs with WASM calls to a .js p
 
 For SDL2, the Emscripten toolchain ports the SDL2 codebase to the target, so you can literally just compile it and link it to your project. See [SDL and WebAssembly](https://discourse.libsdl.org/t/sdl-and-webassembly/24611/5). Emscripten already has the smarts to convert OpenGL calls to WebGL calls, so without looking deeper, I'll surmise that's what happens here.
 
+See this [Comparison of SDL1.2 and SDL2 with Emscripten](https://www.jamesfmackenzie.com/2019/12/01/webassembly-graphics-with-sdl/)
 
 
 *Emscripten and GoLang*
