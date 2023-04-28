@@ -66,7 +66,7 @@ func main() {
 			MoveTo(400, 300, 2*time.Second, gas.EaseInOutSin)
 
 		// frog
-		// Note use of PromiseAn here that reduces nesting of anim code
+		// Note use of Promise here that reduces nesting of anim code
 		// but costs some extra boilerplate and an atomic lock
 		frog.Scale = .05
 		frog.
@@ -89,7 +89,7 @@ func main() {
 		credit.Move(533, 400)
 
 		// hearts
-		// Note use of ThenAn here which increases nesting of anim code
+		// Note use of Then here which increases nesting of anim code
 		// but requires less boilerplate and performs better.
 		heart1.Scale = .1
 		heart2.Scale = .1
