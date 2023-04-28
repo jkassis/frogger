@@ -132,5 +132,5 @@ See Also
 --------
 
 ### GoLang for Cross-Platform Game Engines
-https://blog.gopheracademy.com/advent-2018/go-webgl/
-https://github.com/soypat/threejs-golang-example
+* https://blog.gopheracademy.com/advent-2018/go-webgl/
+* https://github.com/soypat/threejs-golang-example
