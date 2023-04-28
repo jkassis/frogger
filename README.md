@@ -69,9 +69,7 @@ See this [Comparison of SDL1.2 and SDL2 with Emscripten](https://www.jamesfmacke
 
 
 ##### Emscripten and GoLang  
-Emscripten only compiles LLVM-based languages. GoLang has a custom compiler toolchain. And [GoLLVM](https://go.googlesource.com/gollvm/) is not production-ready.
-
-See also...
+Emscripten only compiles LLVM-based languages. GoLang has a custom compiler toolchain. And [GoLLVM](https://go.googlesource.com/gollvm/) is not production-ready. See also...
 * [WASM Spec Summary](https://webassembly.github.io/spec/)
 * [Mozilla Intro to WASM Concepts](https://developer.mozilla.org/en-US/docs/WebAssembly/Concepts)
 * [The WASM spec](https://github.com/WebAssembly/spec/)
