@@ -132,5 +132,6 @@ See Also
 --------
 
 ### GoLang for Cross-Platform Game Engines
+* [The Future of Graphics with Zig](https://devlog.hexops.com/2021/mach-engine-the-future-of-graphics-with-zig/)
 * https://blog.gopheracademy.com/advent-2018/go-webgl/
 * https://github.com/soypat/threejs-golang-example
