@@ -13,6 +13,12 @@
       "program": "${workspaceFolder}/go/main.go",
       "args": [],
       "console": "integratedTerminal",
+      "env": {
+        // "GOOGLE_APPLICATION_CREDENTIALS": "${workspaceFolder}/go/conf/app-credentials.json",
+        "GOOGLE_PROFILER_ENABLED": "TRUE",
+        "GOOGLE_PROFILER_PROJECT_ID": "gameanimationsystem",
+        "GOOGLE_APPLICATION_CREDENTIALS": "go/conf/gameanimationsystem-f32bd15b6c2b.json",
+      }
     },
   ]
 }

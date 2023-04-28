@@ -12,8 +12,35 @@ import (
 	"sync/atomic"
 	"time"
 
+	"cloud.google.com/go/profiler"
 	"github.com/veandco/go-sdl2/sdl"
 )
+
+func init() {
+	// StackDriver Profiling
+	googleProfilerEnabled := os.Getenv("GOOGLE_PROFILER_ENABLED")
+	if googleProfilerEnabled != "TRUE" {
+		fmt.Printf("Profiling disabled.")
+	} else {
+		googleProjectID := os.Getenv("GOOGLE_PROFILER_PROJECT_ID")
+		if googleProjectID == "" {
+			fmt.Printf("Did not find a googleProjectID. Profiling disabled.")
+		} else {
+			fmt.Printf("Profiling enabled.")
+			if err := profiler.Start(profiler.Config{
+				Service:              "gameanimationsystem",
+				NoHeapProfiling:      false,
+				NoAllocProfiling:     false,
+				MutexProfiling:       true,
+				NoGoroutineProfiling: false,
+				DebugLogging:         true,
+				ProjectID:            googleProjectID,
+			}); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}
+}
 
 func CHECK(err error) {
 	if err != nil {

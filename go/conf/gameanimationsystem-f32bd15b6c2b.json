@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "gameanimationsystem",
+  "private_key_id": "f32bd15b6c2b252b6ea8b37a4158a927b8a60e8b",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCynz98n9cjT9Nj\nweSjsNVJsoJM46qkaiW4G53bDmYYsawTZCawNPzdDdJaySFWkIupyRoBagLEBWf5\nMHhiBzHFNHIy+1BrKp3MAQNajouq1ezNBh5/8LJzeFlMBOV/mFU37keLTheNuU0k\n0nyXzrg4PWQu0REAwD+XN/UClqD1M+VdBtoIJ/uIB7yEnqavVZ0RbdLmgemv7GzM\ntFFby9mH6eDIPbjofZ3RtSOLercpPVVjLRYQnvCp6d3pU8qWrUfhV5O2CGg7YC6S\n+gHN4lrvlT+9k8vHhLhPGzi8V3RD42TXGT2+tlTjWTGvtQZFYHRTmkRS5R3WhhbT\nm1luwX5TAgMBAAECggEAClO0qvLe0FbUJOdX3bLikfE1IVbkTb8pURyfosORWYok\nJbbbmcJmgC1FZSRNviB7QqSy0TQc1tJtMXYA78H0ua8Pjy0CeD+tgdbpJ7ooDwdx\nOmVJLCJxXsWte/yofBkFjEdFcaNhLztwX1mgBHLaKb465Y4GyqFSy95bVvv4cFSn\nup/XGpVL+A/1X9zmgbDM1D/AB4Z/bY1E/VuZbodx0WbF2/L/jtl4Zx5+vvqWBvxE\nFaI+SWk+2/CpDDyG9zSTnXM9RVPDtH0FXyftcOivmhjEVJdB4rCsaTNc7aKUKNDg\nLr+3fIx+ByfJSS/J1Nz1cE2ys++0eZ2jGRlnEJGH+QKBgQD6xUWs0BOABqnFSC2W\nMyMw6OyxepIc2RGFvFaLh3CiJ4/t7WUFWRJSoAuZSHD887OcWb/VA4JPiIFhJqIe\nMrVApjoD8RKWCbEVflQjvATG26Bw8vFynNhuFmai9itJdXu062295MDtLJIyevBw\nmdDZFmqlhmhyG/v1hm0XiG2/dwKBgQC2WNBlmzylTZ4wit1pfpvJh0HwfJbjmuDy\nX08O24bFiptD81B1RskwzeCL2fQbQo7aWkdbJ35PBxc1a39kYqYEhswH3CHe4Qf0\nPw7SUx+wZuZjReYVM2smwkfu9W7d5Esbk02RzjQzYCw+2m4IsAjLu3QyhLTbNFmS\nJrP0m8OHBQKBgHWKDZRomxtBBEYiBKwIIBCGvJqbduzqmZnzoyUXQKXgoUfGI7mT\n/FCaD5WzLLKDj8ZTEuVHFcctlmbw8r/wyKAaycqbLjkBJe2LHuj48cw7mUIXvTAZ\ncCB5g3YSqEtwM6GjT/bXx83jPEtI8HX2wrteFHKtQzto/nognfWPztEVAoGAUHDH\npjsgOtAN2942pKY8tV+cwClGKywU1fcjmitPve9SZVx9/u52LLh1uVwx6qCnAj5X\nQige+V/oZiGA9ljqYg7RDRqYOolNB/uVX0VaMmiCdALO6EVhnJySPSE6glqGo6iM\nzKiJsKxZeHTFm8GEb9PHA841NopWhTnboynfzL0CgYBkE8fd4OZvKWFbHNGqQomt\nU1BpLbOR9A/AbLEcW6Bbuu8kgqxP+Glcq3EDN3hAMiGnfOSAHtzfSbkPHTSv+M0l\nJvb2kiNTrZdlGrArglQm8Hkx1N3xmJoOY3fNdYAzlqsporS4Q3LZ7ZpEZSVlk1ym\ngvJ4kFohnKTis+DlnbCYVg==\n-----END PRIVATE KEY-----\n",
+  "client_email": "profiler@gameanimationsystem.iam.gserviceaccount.com",
+  "client_id": "104796440409781816801",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/profiler%40gameanimationsystem.iam.gserviceaccount.com"
+}
