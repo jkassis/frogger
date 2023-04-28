@@ -98,7 +98,9 @@ So far, it seems that most of the energy has gone into the development of Gopher
 
 It isn't SDL, but perhaps we don't need SDL for the Web? It essentially defines abstrations for rendering, sounds, windows, etc. The Web API provides all of this. So the Web API and the SDL API occupy roughly the same tier in the front-end stack. Why not use the Web API?
 
-At this point, it comes down to convenience, time, and abstractions. Your Game needs to operate a Game Engine that works in web, desktop, and mobile containers. It will take some glue to make it work. Even if you choose three.js as the interface to the view, some port of three.js needs to exist for GoLang. To continue... roll up sleeves.
+At this point, it comes down to convenience, time, and abstractions. Your Game needs to operate a Game Engine that works in web, desktop, and mobile containers. It will take some glue to make it work. Even if you choose three.js as the interface to the view, your non-web platform targets need a consistent interface, which motivates porting three.js to GoLang and OpenGL calls.
+
+Could there be another way? Yes. [g3n](https://github.com/g3n/engine) seems to have solved many of these problems and might even support WASM builds. Further research required.
 
 
 #### Known Issues
@@ -133,5 +135,5 @@ See Also
 
 ### GoLang for Cross-Platform Game Engines
 * [The Future of Graphics with Zig](https://devlog.hexops.com/2021/mach-engine-the-future-of-graphics-with-zig/)
-* https://blog.gopheracademy.com/advent-2018/go-webgl/
-* https://github.com/soypat/threejs-golang-example
+* [g3n](https://github.com/g3n/engine)
+* [Three.js GoLang Example] https://github.com/soypat/threejs-golang-example
