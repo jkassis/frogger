@@ -1,0 +1,5 @@
+FROM jkassis/xgo:1.19.5
+RUN apt update
+RUN apt-get clean
+RUN apt -y --no-install-recommends install gcc make libsdl2-2.0-0 libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev pulseaudio
+RUN pkg-config --libs sdl2
