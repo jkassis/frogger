@@ -355,7 +355,27 @@ func (d *Dob) DobRm(b *Dob) {
 
 // DobsClear removes all dobs. You probably want to call AnSetClear too.
 func (d *Dob) DobsClear() {
+	if d.dobs == nil {
+		return
+	}
+	d.dobs.Range(func(id int64, d *Dob) bool {
+		// we need this check to support racing Ans
+		if d != nil {
+			d.Clear()
+		}
+		return true
+	})
+
 	d.dobs.Clear()
+}
+
+// Clear removes sub-dobs, this dob, and discards memory.
+func (d *Dob) Clear() {
+	d.DobsClear()
+	d.AnSetClear()
+	if d.txt != "" && d.Texture != nil && d.Texture.SDLTexture != nil {
+		d.Texture.SDLTexture.Destroy()
+	}
 }
 
 // AnSetClear empties the AnSet. You probably want to call DobsClear too.
@@ -674,5 +694,6 @@ func (a *BaseAn) Exit() *ExitAn {
 
 func (a *ExitAn) Tick(tick int32) bool {
 	a.dob.ctx.DobRm(a.dob)
+	a.dob.Clear()
 	return true
 }

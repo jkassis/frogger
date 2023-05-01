@@ -9,6 +9,7 @@ import (
 	"frogger/gas"
 	"math/rand"
 	"os"
+	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -50,6 +51,8 @@ func CHECK(err error) {
 }
 
 func main() {
+	runtime.LockOSThread()
+
 	rand.Seed(time.Now().UnixNano())
 
 	CHECK(gas.Init())
@@ -69,6 +72,13 @@ func main() {
 	CHECK(err)
 
 	intro := func() chan struct{} {
+		defer func() {
+			err := recover()
+			if err != nil {
+				fmt.Printf("panic: %v\n", err)
+			}
+		}()
+
 		done := make(chan struct{})
 
 		// the spawn order establishs the z rendering order
@@ -157,12 +167,18 @@ func main() {
 	}
 
 	go func() {
+		defer func() {
+			err := recover()
+			if err != nil {
+				fmt.Printf("panic: %v\n", err)
+			}
+		}()
+
 		for {
 			fmt.Println("looping...")
 			<-intro()
 			time.Sleep(time.Second)
-			s.Root.DobsClear()
-			s.Root.AnSetClear()
+			s.Root.Clear()
 		}
 	}()
 
