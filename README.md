@@ -27,6 +27,13 @@ cd gas/go
 go run main.go
 ```
 
+BuildX
+------
+```
+go run bin/make.go setup
+go run bin/make.go buildx
+```
+
 Style
 -------------
 Deliberately, the API may seem terse, but it should afford smooth reading animation sequences. Normally, I prefer fully spelled out variables that emphasize data hierarchies and fn names in object-verb order. eg. orderItemPut(item: Item). Think "dot-notation" without the dots.
@@ -49,12 +56,12 @@ But getting GAS in GoLang to run in a javascript or web container getsc complica
 
 GoLang can compile *to* javascript with a completely separate toolchain (see  GopherJS below). But to run *in* javascript or a browser, we need to build out to WebAssembly (WASM).
 
-##### Native Toolchain  
+##### Native Toolchain
 The native GoLang toolchain can build a WASM target using something like `GOOS=js GOARCH=wasm go build -o main.wasm`. But it does not support binding to C libs for the wasm target, since a WASM app runs in a sandbox that does not and cannot provide them.
 
 Even if the native toolchain could generate a build with staticly included C libs, only *portable* c libs without additional dependencies would run. Since the Go maintainers have not promised this support, you will need to port your portable C libs to GoLang.
 
-##### Emscripten  
+##### Emscripten
 Googling for "GoLang SDL WASM" surfaces [EMScripten](https://emscripten.org/docs/introducing_emscripten/about_emscripten.html), a toolchain for compiling various languages to WASM and asm.js (a tiny, high-performance subset of .js).
 
 It has similar limitations. It can only build *portable* code and libraries to WASM targets as described in [Emscripten Porting](https://emscripten.org/docs/porting/guidelines/index.html).  And yet... Emscripten *does* provide support for building applications that use the SDL2 CLibs. How?
@@ -66,14 +73,14 @@ For SDL2, the Emscripten toolchain ports the SDL2 codebase to the target, so you
 See this [Comparison of SDL1.2 and SDL2 with Emscripten](https://www.jamesfmackenzie.com/2019/12/01/webassembly-graphics-with-sdl/)
 
 
-##### Emscripten and GoLang  
+##### Emscripten and GoLang
 Emscripten only compiles LLVM-based languages. GoLang has a custom compiler toolchain. And [GoLLVM](https://go.googlesource.com/gollvm/) is not production-ready. See also...
 * [WASM Spec Summary](https://webassembly.github.io/spec/)
 * [Mozilla Intro to WASM Concepts](https://developer.mozilla.org/en-US/docs/WebAssembly/Concepts)
 * [The WASM spec](https://github.com/WebAssembly/spec/)
 * [Using WebAssembly to call Web API methods](https://stackoverflow.com/questions/40904053/using-webassembly-to-call-web-api-methods).
 
-##### GopherJS  
+##### GopherJS
 GopherJS compiles GoLang code to .js with a completely separate toolchain. It does not create a binary executable, not even as an intermediate. See [Creating WebGL apps with Go](https://blog.gopheracademy.com/advent-2018/go-webgl/) for a story about using GopherJS with three.js to do 3D rendering.
 
 While people rave about GopherJS, your Go code will never look the same. You will write Javascript in Go and the Go to .js binding code won't compile to a GoLang binary. If you have the option, you're probably better off writing Typescript IMO. WASM intends to improve the performance .js anyway, so why target .js?
@@ -82,12 +89,12 @@ By itself, WebAssembly cannot directly access the DOM or WebGL; it can only call
 
 Putting a finer point on it... GopherJS provides a binding interface and [bindings to popular .js packages](https://github.com/gopherjs/gopherjs/wiki/bindings). When GopherJS compiles the GoLang code it produces .js that calls .js through the generic binding interface.
 
-##### Back to the native WASM target  
+##### Back to the native WASM target
 If you build to WASM with the native GoLang toolchain, your GoLang to .js bindings flow through the generic GoLang to .js binding interface... [syscall/js](https://cs.opensource.google/go/go/+/master:src/syscall/fs_js.go) that essentially implements communication according to the WASM spec.
 
 The picture shaping up here... WASM can optimize compute intensive operations, but might not provide performance advantage when used to drive the display layer, which requires high frequency WebGL calls that must flow through / originate from .js.
 
-##### The Future  
+##### The Future
 But if/when WASM apps get direct access to WebAPIs that ultimately bypass .js... the table flips. [WASI](https://github.com/bytecodealliance/wasmtime/blob/main/docs/WASI-intro.md), the Web Assembly System Interface, represents some progress in this direction. TinyGo leads the way in WASI support for GoLang. See [WASI Hello World](https://wasmbyexample.dev/examples/wasi-hello-world/wasi-hello-world.go.en-us.html).
 
 Whether you compile your GoLang code to .js with GopherJS or WASM with the native toolchain, your GoLang code will call out of the container through some sort of bindings layer.  Those bindings need to be written by a person or generated by a compiler.
@@ -136,5 +143,5 @@ See Also
 * [g3n](https://github.com/g3n/engine), a GoLang 3D game engine that may actually generate WASM targets.
 * [Mach Engine](https://machengine.org/), a progressive Game Engine in Zig written by an obsessed maniac.
 * [Zig](https://ziglang.org/), a general-purpose langauge in the family of Rust and Carbon intended to succeed C.
-* [The Future of Graphics with Zig](https://devlog.hexops.com/2021/mach-engine-the-future-of-graphics-with-zig/), 
+* [The Future of Graphics with Zig](https://devlog.hexops.com/2021/mach-engine-the-future-of-graphics-with-zig/),
 * [Three.js GoLang Example] https://github.com/soypat/threejs-golang-example
