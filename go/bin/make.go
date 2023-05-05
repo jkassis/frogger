@@ -163,12 +163,13 @@ func buildx() (err error) {
 		"-e", "FLAG_X=false",
 		"-e", "FLAG_RACE=false ",
 		"-e", "FLAG_TAGS=static",
-		// `-e", "FLAG_LDFLAGS="-w -s -D_REENTRANT -I/usr/include/SDL2 -lSDL2 -lSDL2main -lSDL2_image -lSDL2_mixer -lSDL2_ttf"`,
-		`-e", "FLAG_LDFLAGS="-w -s"`,
+		`-e", "FLAG_LDFLAGS="-w -s -D_REENTRANT -I/usr/include/SDL2 -lSDL2 -lSDL2main -lSDL2_image -lSDL2_mixer -lSDL2_ttf"`,
 		"-e", "FLAG_BUILDMODE=default ",
 		"-e", "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig",
-		`-e", "TARGETS="linux/amd64,linux/arm64,darwin/amd64,darwin/arm64,windows/amd64`,
-		// "jkassis/xgo:1.19.5",
+		"-e", `TARGETS="linux/amd64,linux/arm64,darwin/amd64,darwin/arm64,windows/amd64`,
+		"-e", `CGO_CXXFLAGS="-I/usr/include/SDL2 -D_REENTRANT"`,
+		"-e", `CGO_CPPFLAGS="-I/usr/include/SDL2 -D_REENTRANT"`,
+		"-e", "OSXCROSS_NO_INCLUDE_PATH_WARNINGS=1",
 		"jkassis/gas-builder:latest",
 		"main.go")
 	if err != nil {
